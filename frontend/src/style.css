@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0b0f19;
+    color: #f1f5f9;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Glassmorphism */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Element Plus Dark Theme Overrides */
+html.dark {
+  --el-bg-color: #0f172a;
+  --el-bg-color-overlay: #1e293b;
+  --el-text-color-primary: #f8fafc;
+  --el-text-color-regular: #cbd5e1;
+  --el-border-color: #334155;
+  --el-border-color-light: #1e293b;
+  --el-color-primary: #10b981;
+}
+
+.el-dialog {
+  background: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  max-width: 95vw !important;
+}
+
+@media (max-width: 640px) {
+  .el-dialog {
+    width: 92vw !important;
+    margin: 15vh auto !important;
+    padding: 16px !important;
+  }
+  .el-dialog__header {
+    padding-bottom: 10px !important;
+    margin-right: 0 !important;
+  }
+}
+
+.el-drawer {
+  background: #0f172a !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+@media (max-width: 640px) {
+  .el-drawer {
+    width: 100% !important;
+  }
+}
+
+.el-table {
+  background-color: transparent !important;
+  --el-table-bg-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+  --el-table-header-bg-color: rgba(15, 23, 42, 0.6) !important;
+  --el-table-border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.el-table th.el-table__cell {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+
+.el-table td.el-table__cell {
+  color: #f1f5f9 !important;
+}
+
+.el-input__wrapper, .el-select__wrapper {
+  background-color: #1e293b !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  color: #f8fafc !important;
+}
+
+.el-select-dropdown__item {
+  color: #cbd5e1 !important;
+}
+
+.el-select-dropdown__item.hover, .el-select-dropdown__item:hover {
+  background-color: #334155 !important;
+}
+
+/* El-input-number is-controls-right dark theme */
+.el-input-number.is-controls-right .el-input-number__increase,
+.el-input-number.is-controls-right .el-input-number__decrease {
+  background-color: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #94a3b8 !important;
+}
+
+.el-input-number.is-controls-right .el-input-number__increase:hover,
+.el-input-number.is-controls-right .el-input-number__decrease:hover {
+  background-color: #334155 !important;
+  color: #34d399 !important;
+}
+
+.el-input-number.is-controls-right .el-input__wrapper {
+  padding-left: 10px !important;
+  padding-right: 34px !important;
+}
+
+.el-input-number.is-controls-right .el-input__inner {
+  text-align: left !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-weight: 600 !important;
+}
+

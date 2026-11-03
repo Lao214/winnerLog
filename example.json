@@ -1,0 +1,89 @@
+{
+    "leagueCode": "PL",
+    "seasonName": "2024-2025",
+    "roundName": "第28轮",
+    "homeTeam": "阿森纳",
+    "awayTeam": "切尔西",
+    "matchTime": "2025-03-15 23:00:00",
+    "venue": "酋长球场",
+    "predictions": [
+        {
+            "modelCode": "GPT",
+            "resultItems": [
+                {
+                    "result": "HOME_WIN",
+                    "odds": 1.90
+                },
+                {
+                    "result": "DRAW",
+                    "odds": 3.40
+                }
+            ],
+            "scoreItems": [
+                {
+                    "score": "2-1",
+                    "odds": 8.50
+                },
+                {
+                    "score": "1-0",
+                    "odds": 6.00
+                },
+                {
+                    "score": "2-0",
+                    "odds": 7.00
+                }
+            ],
+            "goalItems": [
+                {
+                    "goals": 2,
+                    "odds": 3.20
+                },
+                {
+                    "goals": 3,
+                    "odds": 3.80
+                },
+                {
+                    "goals": 4,
+                    "odds": 5.50
+                }
+            ],
+            "confidence": 82.5,
+            "analysisSummary": "阿森纳主场战绩强势，双选不败(主胜+平局)与精选比分进球组合"
+        },
+        {
+            "modelCode": "QWEN",
+            "predictedResult": "HOME_WIN",
+            "resultOdds": 1.90,
+            "scoreItems": [
+                {
+                    "score": "3-1",
+                    "odds": 12.00
+                },
+                {
+                    "score": "3-0",
+                    "odds": 10.00
+                },
+                {
+                    "score": "4-1",
+                    "odds": 18.00
+                }
+            ],
+            "goalItems": [
+                {
+                    "goals": 3,
+                    "odds": 3.80
+                },
+                {
+                    "goals": 4,
+                    "odds": 5.50
+                },
+                {
+                    "goals": 5,
+                    "odds": 9.00
+                }
+            ],
+            "confidence": 78.0,
+            "analysisSummary": "千问看好大比分主胜"
+        }
+    ]
+}
