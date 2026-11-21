@@ -7,6 +7,8 @@ import DailyProfitView from '../views/DailyProfitView.vue'
 import DailyGoalsProfitView from '../views/DailyGoalsProfitView.vue'
 import OddsWaterUpsetView from '../views/OddsWaterUpsetView.vue'
 import DailyWaterComboView from '../views/DailyWaterComboView.vue'
+import HandicapOddsStatsView from '../views/HandicapOddsStatsView.vue'
+import MatchOddsSteppedView from '../views/MatchOddsSteppedView.vue'
 
 const routes = [
   {
@@ -47,11 +49,30 @@ const routes = [
     component: DailyWaterComboView
   },
   {
+    path: '/handicap-odds-stats',
+    alias: '/handicap-odds-record',
+    name: 'HandicapOddsStats',
+    component: HandicapOddsStatsView
+  },
+  {
+    path: '/match-odds-stepped',
+    alias: ['/match-stepped-analysis', '/handicap-match-analysis'],
+    name: 'MatchOddsStepped',
+    component: MatchOddsSteppedView
+  },
+  {
+    path: '/extreme-goals-odds',
+    alias: ['/goals-extreme-odds', '/extreme-odds-analysis'],
+    name: 'ExtremeGoalsOdds',
+    component: () => import('../views/ExtremeGoalsOddsView.vue')
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: AdminView
   }
 ]
+
 
 const router = createRouter({
   history: createWebHistory(),

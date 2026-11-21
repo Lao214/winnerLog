@@ -1,0 +1,45 @@
+server:
+  address: 127.0.0.1
+  port: 9296
+
+spring:
+  application:
+    name: winnerLogBackend
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+  datasource:
+    # 生产数据库连接配置 (注意：密码中包含 # 字符，必须使用引号包裹以防止被 YAML 误识别为注释)
+    url: jdbc:mysql://120.77.172.209:3339/winner_log?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: dbeaver_user
+    password: 'QWER2341asdf#'
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      connection-test-query: SELECT 1
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+# 生产环境 Swagger API 接口文档配置 (支持在线调试)
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha

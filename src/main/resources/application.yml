@@ -45,12 +45,16 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:winner_log}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    url: jdbc:mysql://${DB_HOST:120.77.172.209}:${DB_PORT:3339}/${DB_NAME:winner_log}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root1234}
+    username: ${DB_USERNAME:dbeaver_user}
+    password: ${DB_PASSWORD:'QWER2341asdf#'}
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: update
     show-sql: false
+
+server:
+  address: 127.0.0.1
+  port: 9296

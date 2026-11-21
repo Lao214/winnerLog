@@ -96,10 +96,23 @@ const navItems = [
 
 const isItemActive = (path) => {
   if (path === '/daily-profit') {
-    return route.path === '/daily-profit' || route.path === '/daily-goals-profit' || route.path === '/odds-water-profit' || route.path === '/odds-water-record' || route.path === '/water-combo-profit' || route.path === '/daily-water-combo'
+    return route.path === '/daily-profit' || 
+           route.path === '/daily-goals-profit' || 
+           route.path === '/odds-water-profit' || 
+           route.path === '/odds-water-record' || 
+           route.path === '/water-combo-profit' || 
+           route.path === '/daily-water-combo' ||
+           route.path === '/handicap-odds-stats' ||
+           route.path === '/handicap-odds-record' ||
+           route.path === '/match-odds-stepped' ||
+           route.path === '/match-stepped-analysis' ||
+           route.path === '/handicap-match-analysis' ||
+           route.path === '/extreme-goals-odds' ||
+           route.path === '/goals-extreme-odds'
   }
   return route.path === path
 }
+
 </script>
 
 <style scoped>

@@ -55,8 +55,42 @@ export const api = {
   getDailyWaterComboDetail: (id) => client.get(`/water-combo-record/${id}`),
   createDailyWaterCombo: (data) => client.post('/water-combo-record', data),
   updateDailyWaterCombo: (id, data) => client.put(`/water-combo-record/${id}`, data),
-  deleteDailyWaterCombo: (id) => client.delete(`/water-combo-record/${id}`)
+  deleteDailyWaterCombo: (id) => client.delete(`/water-combo-record/${id}`),
+
+  // 10. 让球获胜赔率六区间胜平负与穿盘率大数据统计接口 (赔率穿盘版)
+  getHandicapOddsStatsList: (params) => client.get('/handicap-odds-stats/list', { params }),
+  getHandicapOddsStatsPage: (params) => client.get('/handicap-odds-stats/page', { params }),
+  getHandicapOddsStatsSummary: (params) => client.get('/handicap-odds-stats/summary', { params }),
+  getHandicapOddsStatsDetail: (id) => client.get(`/handicap-odds-stats/${id}`),
+  createHandicapOddsStats: (data) => client.post('/handicap-odds-stats', data),
+  updateHandicapOddsStats: (id, data) => client.put(`/handicap-odds-stats/${id}`, data),
+  deleteHandicapOddsStats: (id) => client.delete(`/handicap-odds-stats/${id}`),
+
+  // 11. 单场精细化比赛明细与多步幅开奖记录接口
+  getHandicapMatchRecords: (params) => client.get('/handicap-match-record/list', { params }),
+  getHandicapMatchRecordPage: (params) => client.get('/handicap-match-record/page', { params }),
+  getHandicapMatchRecordDetail: (id) => client.get(`/handicap-match-record/${id}`),
+  createHandicapMatchRecord: (data) => client.post('/handicap-match-record', data),
+  batchCreateHandicapMatchRecords: (data) => client.post('/handicap-match-record/batch', data),
+  updateHandicapMatchRecord: (id, data) => client.put(`/handicap-match-record/${id}`, data),
+  deleteHandicapMatchRecord: (id) => client.delete(`/handicap-match-record/${id}`),
+  batchDeleteHandicapMatchRecords: (ids) => client.post('/handicap-match-record/batch-delete', ids),
+  simulateHandicapMatch: (data) => client.post('/handicap-match-record/simulate', data),
+
+  // 12. 0球与7球两极进球赔率大数据分析接口
+  getExtremeGoalsOddsList: (params) => client.get('/extreme-goals-odds/list', { params }),
+  getExtremeGoalsOddsPage: (params) => client.get('/extreme-goals-odds/page', { params }),
+  getExtremeGoalsOddsSummary: (params) => client.get('/extreme-goals-odds/summary', { params }),
+  getExtremeGoalsOddsLeagues: () => client.get('/extreme-goals-odds/leagues'),
+  getExtremeGoalsOddsDetail: (id) => client.get(`/extreme-goals-odds/${id}`),
+  createExtremeGoalsOdds: (data) => client.post('/extreme-goals-odds', data),
+  batchCreateExtremeGoalsOdds: (data) => client.post('/extreme-goals-odds/batch', data),
+  updateExtremeGoalsOdds: (id, data) => client.put(`/extreme-goals-odds/${id}`, data),
+  deleteExtremeGoalsOdds: (id) => client.delete(`/extreme-goals-odds/${id}`),
+  batchDeleteExtremeGoalsOdds: (ids) => client.post('/extreme-goals-odds/batch-delete', ids),
+  simulateExtremeGoals: (data) => client.post('/extreme-goals-odds/simulate', data)
 }
 
 export default api
+
 

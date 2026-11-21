@@ -484,5 +484,289 @@ VALUES
 ('2026-10-24', 10, 600.00, 1120.00, 150.00, 850.00, 566.67, 750.00, 1970.00, '五大联赛超级串4串11+高赔长串', 2720.00, 262.67, 'PROFIT', 'GREAT_PROFIT', 75.00, 197.00, '德甲英超高水诱盘被识破，逆向博冷大丰收，高赔长串暴击红单'),
 ('2026-10-25', 9, 500.00, 430.00, 100.00, 180.00, 180.00, 600.00, 610.00, '意甲西甲低水稳健2串1+3串1长串', 1210.00, 101.67, 'PROFIT', 'GREAT_PROFIT', 66.67, 67.78, '周日正路打出概率高，低水盘口稳如磐石，长串亦小红打出');
 
+-- ------------------------------------------------------------------------------
+-- 13. 让球方获胜赔率六区间胜平负与穿盘率大数据战绩表 (handicap_odds_stats_record)
+-- 统计让球方获胜赔率六区间（≤1.40, 1.41-1.60, 1.61-1.80, 1.81-2.00, 2.01-2.20, ≥2.21）
+-- 的胜平负场数、赢球穿盘数、穿盘率，并严格细分主让球与客让球大数据分析
+-- ------------------------------------------------------------------------------
+DROP TABLE IF EXISTS `handicap_odds_stats_record`;
+
+CREATE TABLE `handicap_odds_stats_record` (
+    `id` BIGINT AUTO_INCREMENT COMMENT '主键ID',
+    `record_date` DATE NOT NULL COMMENT '记录日期 / 比赛日 (YYYY-MM-DD)',
+    `batch_title` VARCHAR(100) DEFAULT NULL COMMENT '统计批次/说明 (如 五大联赛周末让球盘口统计)',
+
+    -- 1. 全盘总体指标
+    `total_matches` INT NOT NULL DEFAULT 0 COMMENT '全盘总比赛场数',
+    `total_win_count` INT NOT NULL DEFAULT 0 COMMENT '全盘让球方胜场数',
+    `total_draw_count` INT NOT NULL DEFAULT 0 COMMENT '全盘打平场数',
+    `total_loss_count` INT NOT NULL DEFAULT 0 COMMENT '全盘让球方负场数',
+    `total_break_count` INT NOT NULL DEFAULT 0 COMMENT '全盘赢球穿盘场数',
+    `overall_win_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '全盘让球方胜率 (%)',
+    `overall_break_rate_on_win` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '全盘赢球穿盘率 (%) (穿盘数/胜场数)',
+    `overall_break_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '全盘综合穿盘率 (%) (穿盘数/总场数)',
+
+    -- 2. 主让球总体指标 (Home Handicap Total)
+    `home_total_matches` INT NOT NULL DEFAULT 0 COMMENT '主让球总场数',
+    `home_total_win` INT NOT NULL DEFAULT 0 COMMENT '主让球胜场数',
+    `home_total_draw` INT NOT NULL DEFAULT 0 COMMENT '主让球平场数',
+    `home_total_loss` INT NOT NULL DEFAULT 0 COMMENT '主让球负场数',
+    `home_total_break` INT NOT NULL DEFAULT 0 COMMENT '主让球赢球穿盘数',
+    `home_win_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '主让球胜率 (%)',
+    `home_break_rate_on_win` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '主让赢球穿盘率 (%)',
+    `home_break_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '主让综合穿盘率 (%)',
+
+    -- 3. 客让球总体指标 (Away Handicap Total)
+    `away_total_matches` INT NOT NULL DEFAULT 0 COMMENT '客让球总场数',
+    `away_total_win` INT NOT NULL DEFAULT 0 COMMENT '客让球胜场数',
+    `away_total_draw` INT NOT NULL DEFAULT 0 COMMENT '客让球平场数',
+    `away_total_loss` INT NOT NULL DEFAULT 0 COMMENT '客让球负场数',
+    `away_total_break` INT NOT NULL DEFAULT 0 COMMENT '客让球赢球穿盘数',
+    `away_win_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '客让球胜率 (%)',
+    `away_break_rate_on_win` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '客让赢球穿盘率 (%)',
+    `away_break_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '客让综合穿盘率 (%)',
+
+    -- 4. 主让球六区间明细 (胜/平/负/赢球穿盘)
+    -- 区间一: <= 1.40
+    `home_r1_win` INT NOT NULL DEFAULT 0 COMMENT '主让 R1(<=1.40) 胜场数',
+    `home_r1_draw` INT NOT NULL DEFAULT 0 COMMENT '主让 R1(<=1.40) 平场数',
+    `home_r1_loss` INT NOT NULL DEFAULT 0 COMMENT '主让 R1(<=1.40) 负场数',
+    `home_r1_break` INT NOT NULL DEFAULT 0 COMMENT '主让 R1(<=1.40) 穿盘数',
+
+    -- 区间二: 1.41 - 1.60
+    `home_r2_win` INT NOT NULL DEFAULT 0 COMMENT '主让 R2(1.41-1.60) 胜场数',
+    `home_r2_draw` INT NOT NULL DEFAULT 0 COMMENT '主让 R2(1.41-1.60) 平场数',
+    `home_r2_loss` INT NOT NULL DEFAULT 0 COMMENT '主让 R2(1.41-1.60) 负场数',
+    `home_r2_break` INT NOT NULL DEFAULT 0 COMMENT '主让 R2(1.41-1.60) 穿盘数',
+
+    -- 区间三: 1.61 - 1.80
+    `home_r3_win` INT NOT NULL DEFAULT 0 COMMENT '主让 R3(1.61-1.80) 胜场数',
+    `home_r3_draw` INT NOT NULL DEFAULT 0 COMMENT '主让 R3(1.61-1.80) 平场数',
+    `home_r3_loss` INT NOT NULL DEFAULT 0 COMMENT '主让 R3(1.61-1.80) 负场数',
+    `home_r3_break` INT NOT NULL DEFAULT 0 COMMENT '主让 R3(1.61-1.80) 穿盘数',
+
+    -- 区间四: 1.81 - 2.00
+    `home_r4_win` INT NOT NULL DEFAULT 0 COMMENT '主让 R4(1.81-2.00) 胜场数',
+    `home_r4_draw` INT NOT NULL DEFAULT 0 COMMENT '主让 R4(1.81-2.00) 平场数',
+    `home_r4_loss` INT NOT NULL DEFAULT 0 COMMENT '主让 R4(1.81-2.00) 负场数',
+    `home_r4_break` INT NOT NULL DEFAULT 0 COMMENT '主让 R4(1.81-2.00) 穿盘数',
+
+    -- 区间五: 2.01 - 2.20
+    `home_r5_win` INT NOT NULL DEFAULT 0 COMMENT '主让 R5(2.01-2.20) 胜场数',
+    `home_r5_draw` INT NOT NULL DEFAULT 0 COMMENT '主让 R5(2.01-2.20) 平场数',
+    `home_r5_loss` INT NOT NULL DEFAULT 0 COMMENT '主让 R5(2.01-2.20) 负场数',
+    `home_r5_break` INT NOT NULL DEFAULT 0 COMMENT '主让 R5(2.01-2.20) 穿盘数',
+
+    -- 区间六: >= 2.21
+    `home_r6_win` INT NOT NULL DEFAULT 0 COMMENT '主让 R6(>=2.21) 胜场数',
+    `home_r6_draw` INT NOT NULL DEFAULT 0 COMMENT '主让 R6(>=2.21) 平场数',
+    `home_r6_loss` INT NOT NULL DEFAULT 0 COMMENT '主让 R6(>=2.21) 负场数',
+    `home_r6_break` INT NOT NULL DEFAULT 0 COMMENT '主让 R6(>=2.21) 穿盘数',
+
+    -- 5. 客让球六区间明细 (胜/平/负/赢球穿盘)
+    -- 区间一: <= 1.40
+    `away_r1_win` INT NOT NULL DEFAULT 0 COMMENT '客让 R1(<=1.40) 胜场数',
+    `away_r1_draw` INT NOT NULL DEFAULT 0 COMMENT '客让 R1(<=1.40) 平场数',
+    `away_r1_loss` INT NOT NULL DEFAULT 0 COMMENT '客让 R1(<=1.40) 负场数',
+    `away_r1_break` INT NOT NULL DEFAULT 0 COMMENT '客让 R1(<=1.40) 穿盘数',
+
+    -- 区间二: 1.41 - 1.60
+    `away_r2_win` INT NOT NULL DEFAULT 0 COMMENT '客让 R2(1.41-1.60) 胜场数',
+    `away_r2_draw` INT NOT NULL DEFAULT 0 COMMENT '客让 R2(1.41-1.60) 平场数',
+    `away_r2_loss` INT NOT NULL DEFAULT 0 COMMENT '客让 R2(1.41-1.60) 负场数',
+    `away_r2_break` INT NOT NULL DEFAULT 0 COMMENT '客让 R2(1.41-1.60) 穿盘数',
+
+    -- 区间三: 1.61 - 1.80
+    `away_r3_win` INT NOT NULL DEFAULT 0 COMMENT '客让 R3(1.61-1.80) 胜场数',
+    `away_r3_draw` INT NOT NULL DEFAULT 0 COMMENT '客让 R3(1.61-1.80) 平场数',
+    `away_r3_loss` INT NOT NULL DEFAULT 0 COMMENT '客让 R3(1.61-1.80) 负场数',
+    `away_r3_break` INT NOT NULL DEFAULT 0 COMMENT '客让 R3(1.61-1.80) 穿盘数',
+
+    -- 区间四: 1.81 - 2.00
+    `away_r4_win` INT NOT NULL DEFAULT 0 COMMENT '客让 R4(1.81-2.00) 胜场数',
+    `away_r4_draw` INT NOT NULL DEFAULT 0 COMMENT '客让 R4(1.81-2.00) 平场数',
+    `away_r4_loss` INT NOT NULL DEFAULT 0 COMMENT '客让 R4(1.81-2.00) 负场数',
+    `away_r4_break` INT NOT NULL DEFAULT 0 COMMENT '客让 R4(1.81-2.00) 穿盘数',
+
+    -- 区间五: 2.01 - 2.20
+    `away_r5_win` INT NOT NULL DEFAULT 0 COMMENT '客让 R5(2.01-2.20) 胜场数',
+    `away_r5_draw` INT NOT NULL DEFAULT 0 COMMENT '客让 R5(2.01-2.20) 平场数',
+    `away_r5_loss` INT NOT NULL DEFAULT 0 COMMENT '客让 R5(2.01-2.20) 负场数',
+    `away_r5_break` INT NOT NULL DEFAULT 0 COMMENT '客让 R5(2.01-2.20) 穿盘数',
+
+    -- 区间六: >= 2.21
+    `away_r6_win` INT NOT NULL DEFAULT 0 COMMENT '客让 R6(>=2.21) 胜场数',
+    `away_r6_draw` INT NOT NULL DEFAULT 0 COMMENT '客让 R6(>=2.21) 平场数',
+    `away_r6_loss` INT NOT NULL DEFAULT 0 COMMENT '客让 R6(>=2.21) 负场数',
+    `away_r6_break` INT NOT NULL DEFAULT 0 COMMENT '客让 R6(>=2.21) 穿盘数',
+
+    -- 6. 大数据分析研判衍生标签
+    `best_break_interval` VARCHAR(50) DEFAULT NULL COMMENT '当日穿盘率最高区间 (如 主让 R1)',
+    `lowest_break_interval` VARCHAR(50) DEFAULT NULL COMMENT '当日穿盘率最低区间 (如 客让 R6)',
+    `home_away_bias` VARCHAR(30) DEFAULT 'BALANCED' COMMENT '主客让球偏向 (HOME_BIAS:主让占优, AWAY_BIAS:客让占优, BALANCED:均衡)',
+    `risk_evaluation` VARCHAR(100) DEFAULT NULL COMMENT '大数据风控与穿盘评级摘要',
+    `remarks` TEXT DEFAULT NULL COMMENT '复盘备忘与心得',
+
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_handicap_record_date` (`record_date`),
+    KEY `idx_handicap_record_date` (`record_date`),
+    KEY `idx_handicap_overall_win` (`overall_win_rate`),
+    KEY `idx_handicap_overall_break` (`overall_break_rate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='让球方获胜赔率六区间胜平负与穿盘率大数据战绩表';
+
+-- 预置让球赔率区间胜平负与穿盘率示例测试数据
+INSERT INTO `handicap_odds_stats_record`
+(`record_date`, `batch_title`, `total_matches`, `total_win_count`, `total_draw_count`, `total_loss_count`, `total_break_count`, `overall_win_rate`, `overall_break_rate_on_win`, `overall_break_rate`, `home_total_matches`, `home_total_win`, `home_total_draw`, `home_total_loss`, `home_total_break`, `home_win_rate`, `home_break_rate_on_win`, `home_break_rate`, `away_total_matches`, `away_total_win`, `away_total_draw`, `away_total_loss`, `away_total_break`, `away_win_rate`, `away_break_rate_on_win`, `away_break_rate`, `home_r1_win`, `home_r1_draw`, `home_r1_loss`, `home_r1_break`, `home_r2_win`, `home_r2_draw`, `home_r2_loss`, `home_r2_break`, `home_r3_win`, `home_r3_draw`, `home_r3_loss`, `home_r3_break`, `home_r4_win`, `home_r4_draw`, `home_r4_loss`, `home_r4_break`, `home_r5_win`, `home_r5_draw`, `home_r5_loss`, `home_r5_break`, `home_r6_win`, `home_r6_draw`, `home_r6_loss`, `home_r6_break`, `away_r1_win`, `away_r1_draw`, `away_r1_loss`, `away_r1_break`, `away_r2_win`, `away_r2_draw`, `away_r2_loss`, `away_r2_break`, `away_r3_win`, `away_r3_draw`, `away_r3_loss`, `away_r3_break`, `away_r4_win`, `away_r4_draw`, `away_r4_loss`, `away_r4_break`, `away_r5_win`, `away_r5_draw`, `away_r5_loss`, `away_r5_break`, `away_r6_win`, `away_r6_draw`, `away_r6_loss`, `away_r6_break`, `best_break_interval`, `lowest_break_interval`, `home_away_bias`, `risk_evaluation`, `remarks`)
+VALUES
+('2026-10-21', '欧冠小组赛第一轮让球盘口六区间大数据', 16, 11, 3, 2, 8, 68.75, 72.73, 50.00, 10, 8, 1, 1, 6, 80.00, 75.00, 60.00, 6, 3, 2, 1, 2, 50.00, 66.67, 33.33, 3, 0, 0, 3, 2, 0, 0, 2, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, '主让 R1(<=1.40)', '客让 R5(2.01-2.20)', 'HOME_BIAS', '主让深盘极强，R1与R2穿盘率达100%，客让高水区间乏力', '豪门主场大胜打穿深盘，客让浅盘平局偏多'),
+('2026-10-22', '欧冠小组赛第二轮让球盘口六区间大数据', 16, 9, 4, 3, 6, 56.25, 66.67, 37.50, 9, 6, 2, 1, 4, 66.67, 66.67, 44.44, 7, 3, 2, 2, 2, 42.86, 66.67, 28.57, 2, 0, 0, 2, 2, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, '主让 R1(<=1.40)', '客让 R5(2.01-2.20)', 'HOME_BIAS', '次轮多场强强对话卡盘，赢球但未穿盘场次上升', '强队一球小胜走水较多，低水胜率稳定'),
+('2026-10-23', '欧联与欧协联淘汰赛让球盘口六区间统计', 18, 9, 5, 4, 5, 50.00, 55.56, 27.78, 11, 6, 3, 2, 4, 54.55, 66.67, 36.36, 7, 3, 2, 2, 1, 42.86, 33.33, 14.29, 2, 1, 0, 2, 2, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, '主让 R1(<=1.40)', '客让 R3(1.61-1.80)', 'HOME_BIAS', '次级欧战冷门频出，客让穿盘率仅14%，冷门主要集中在R3与R5区间', '欧联客场作战阻力巨大，让球方赢球穿盘难度倍增'),
+('2026-10-24', '五大联赛周六超级比赛日让球盘口六区间大数据', 28, 19, 5, 4, 14, 67.86, 73.68, 50.00, 16, 12, 3, 1, 9, 75.00, 75.00, 56.25, 12, 7, 2, 3, 5, 58.33, 71.43, 41.67, 4, 0, 0, 4, 3, 1, 0, 2, 2, 1, 0, 2, 2, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 2, 0, 1, 2, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, '主让 R1(<=1.40)', '客让 R5(2.01-2.20)', 'HOME_BIAS', '五大联赛周六正路大爆发，低水主让与低水客让均实现超高穿盘率', '德甲英超豪门全线打穿，1.40以下穿盘率高达100%'),
+('2026-10-25', '五大联赛周日决战让球盘口六区间大数据', 25, 15, 6, 4, 10, 60.00, 66.67, 40.00, 14, 9, 3, 2, 6, 64.29, 66.67, 42.86, 11, 6, 3, 2, 4, 54.55, 66.67, 36.36, 3, 0, 0, 3, 2, 1, 0, 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, '主让 R1(<=1.40)', '客让 R5(2.01-2.20)', 'HOME_BIAS', '意甲西甲防守反击为主，平局卡盘略有增多，R1保持百分百穿盘稳健', '意甲多场1球卡盘，低赔正路稳定但穿盘率有所回落');
+
+-- ------------------------------------------------------------------------------
+-- 14. 足球单场精细化开奖明细与让球赛果记录表 (handicap_match_record)
+-- 详细记录每场比赛的胜赔（分主客）、开奖结果（结果及结果赔、让球赔、半全场、总进球）、是否穿盘
+-- 供前端按每 0.05、0.10、0.15、0.20 等多步幅动态切分聚合统计分析
+-- ------------------------------------------------------------------------------
+DROP TABLE IF EXISTS `handicap_match_record`;
+
+CREATE TABLE `handicap_match_record` (
+    `id` BIGINT AUTO_INCREMENT COMMENT '比赛明细主键ID',
+    `match_date` DATE NOT NULL COMMENT '比赛日期 (YYYY-MM-DD)',
+    `batch_title` VARCHAR(100) DEFAULT NULL COMMENT '批次/赛事组 (如 英超第10轮, 周末精选)',
+    `league_name` VARCHAR(100) DEFAULT NULL COMMENT '联赛名称 (如 英超, 西甲, 意甲, 德甲, 欧冠)',
+    `match_system` VARCHAR(30) NOT NULL DEFAULT 'LEAGUE' COMMENT '赛制类型 (LEAGUE:联赛积分制, CUP:杯赛淘汰赛, FRIENDLY:友谊赛, OTHER:其他)',
+    `home_team` VARCHAR(100) NOT NULL COMMENT '主队名称',
+    `away_team` VARCHAR(100) NOT NULL COMMENT '客队名称',
+    `handicap_side` VARCHAR(20) NOT NULL DEFAULT 'HOME' COMMENT '让球方 (HOME:主让, AWAY:客让)',
+    `handicap_value` DECIMAL(4,2) NOT NULL DEFAULT -1.00 COMMENT '让球盘口数值 (-1.00:让1球, -0.75:半一, -1.25:一球球半)',
+    `home_win_odds` DECIMAL(6,2) NOT NULL COMMENT '主胜初盘/终盘赔率',
+    `draw_odds` DECIMAL(6,2) DEFAULT NULL COMMENT '平局赔率',
+    `away_win_odds` DECIMAL(6,2) NOT NULL COMMENT '客胜初盘/终盘赔率',
+    `handicap_odds` DECIMAL(6,2) NOT NULL COMMENT '让球方获胜赔率 (动态步幅分桶核心依据)',
+    `half_score` VARCHAR(20) DEFAULT NULL COMMENT '半场比分 (如 1:0)',
+    `full_score` VARCHAR(20) DEFAULT NULL COMMENT '全场比分 (如 2:0)',
+    `match_result` VARCHAR(20) NOT NULL COMMENT '最终开奖赛果 (HOME_WIN:主胜, DRAW:平局, AWAY_WIN:客胜)',
+    `result_odds` DECIMAL(6,2) NOT NULL COMMENT '赛果对应的打出赔率',
+    `handicap_result` VARCHAR(20) DEFAULT NULL COMMENT '让球盘开奖结果 (WIN:让胜, DRAW:让平/走水, LOSS:让负)',
+    `handicap_result_odds` DECIMAL(6,2) DEFAULT NULL COMMENT '让球盘开奖打出赔率',
+    `half_full_result` VARCHAR(20) DEFAULT NULL COMMENT '半全场赛果 (如 胜胜, 平胜, 胜平, 平平, 负负)',
+    `total_goals` INT DEFAULT NULL COMMENT '全场总进球数',
+    `is_break` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否打穿盘口 (1:穿盘, 0:未穿盘/卡盘/翻车)',
+    `remarks` VARCHAR(500) DEFAULT NULL COMMENT '复盘心得与备忘',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_hmr_match_date` (`match_date`),
+    KEY `idx_hmr_handicap_side` (`handicap_side`),
+    KEY `idx_hmr_handicap_odds` (`handicap_odds`),
+    KEY `idx_hmr_is_break` (`is_break`),
+    KEY `idx_hmr_match_result` (`match_result`),
+    KEY `idx_hmr_match_system` (`match_system`),
+    KEY `idx_hmr_batch_title` (`batch_title`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='单场比赛精细化让球与开奖明细记录表';
+
+-- 预置单场精细化测试战绩明细数据
+INSERT INTO `handicap_match_record`
+(`match_date`, `batch_title`, `league_name`, `match_system`, `home_team`, `away_team`, `handicap_side`, `handicap_value`, `home_win_odds`, `draw_odds`, `away_win_odds`, `handicap_odds`, `half_score`, `full_score`, `match_result`, `result_odds`, `handicap_result`, `handicap_result_odds`, `half_full_result`, `total_goals`, `is_break`, `remarks`)
+VALUES
+('2026-10-24', '五大联赛周六精选', '英超', 'LEAGUE', '曼城', '南安普顿', 'HOME', -1.00, 1.22, 6.50, 12.00, 1.22, '1:0', '3:0', 'HOME_WIN', 1.22, 'WIN', 1.65, '胜胜', 3, 1, '豪门主场碾压，顺利打穿-1球深盘'),
+
+('2026-10-24', '五大联赛周六精选', '英超', '阿森纳', '埃弗顿', 'HOME', -1.00, 1.35, 5.20, 8.50, 1.35, '1:0', '2:0', 'HOME_WIN', 1.35, 'WIN', 2.05, '胜胜', 2, 1, '主场零封两球完胜穿盘'),
+('2026-10-24', '五大联赛周六精选', '英超', '阿斯顿维拉', '伯恩茅斯', 'HOME', -1.00, 1.48, 4.30, 6.20, 1.48, '0:0', '2:1', 'HOME_WIN', 1.48, 'DRAW', 3.60, '平胜', 3, 0, '一球险胜，让1球走水卡盘未穿'),
+('2026-10-24', '五大联赛周六精选', '西甲', '皇家马德里', '塞尔塔', 'HOME', -1.00, 1.28, 5.80, 10.50, 1.28, '2:0', '4:1', 'HOME_WIN', 1.28, 'WIN', 1.78, '胜胜', 5, 1, '主场进攻大开大合，大胜穿盘'),
+('2026-10-24', '五大联赛周六精选', '西甲', '巴塞罗那', '塞维利亚', 'HOME', -1.00, 1.42, 4.80, 7.20, 1.42, '1:0', '3:1', 'HOME_WIN', 1.42, 'WIN', 2.15, '胜胜', 4, 1, '半全场胜胜，净胜两球打穿'),
+('2026-10-24', '五大联赛周六精选', '西甲', '马德里竞技', '莱加内斯', 'HOME', -1.00, 1.52, 4.10, 6.50, 1.52, '0:1', '3:1', 'HOME_WIN', 1.52, 'WIN', 2.45, '负胜', 4, 1, '半场落后下半场连入三球逆转穿盘'),
+('2026-10-24', '五大联赛周六精选', '德甲', '拜仁慕尼黑', '波鸿', 'HOME', -1.00, 1.18, 7.50, 15.00, 1.18, '2:0', '5:0', 'HOME_WIN', 1.18, 'WIN', 1.52, '胜胜', 5, 1, '五球大胜，深盘绝对红单'),
+('2026-10-24', '五大联赛周六精选', '德甲', '勒沃库森', '法兰克福', 'HOME', -1.00, 1.68, 4.00, 4.60, 1.68, '1:1', '2:1', 'HOME_WIN', 1.68, 'DRAW', 3.75, '平胜', 3, 0, '主队小胜一球走水卡盘'),
+('2026-10-24', '五大联赛周六精选', '德甲', '莱比锡红牛', '弗赖堡', 'HOME', -1.00, 1.82, 3.80, 4.10, 1.82, '0:1', '3:1', 'HOME_WIN', 1.82, 'WIN', 3.10, '负胜', 4, 1, '高水主让翻盘打穿'),
+('2026-10-24', '五大联赛周六精选', '德甲', '多特蒙德', '圣保利', 'HOME', -1.00, 1.62, 4.20, 5.00, 1.62, '1:0', '2:1', 'HOME_WIN', 1.62, 'DRAW', 3.70, '胜胜', 3, 0, '多特险胜卡盘'),
+('2026-10-24', '五大联赛周六精选', '意甲', '国际米兰', '尤文图斯', 'HOME', -1.00, 1.88, 3.40, 4.20, 1.88, '3:2', '4:4', 'DRAW', 3.40, 'LOSS', 1.95, '胜平', 8, 0, '强强对话打出4-4大比分平局翻车'),
+('2026-10-24', '五大联赛周六精选', '意甲', '那不勒斯', '莱切', 'HOME', -1.00, 1.25, 6.00, 11.00, 1.25, '0:0', '1:0', 'HOME_WIN', 1.25, 'DRAW', 3.80, '平胜', 1, 0, '超低赔1-0小胜卡盘走水'),
+('2026-10-24', '五大联赛周六精选', '意甲', '亚特兰大', '维罗纳', 'HOME', -1.00, 1.45, 4.60, 6.80, 1.45, '3:0', '6:1', 'HOME_WIN', 1.45, 'WIN', 2.10, '胜胜', 7, 1, '大开大合屠杀打穿'),
+('2026-10-24', '五大联赛周六精选', '法甲', '巴黎圣日耳曼', '马赛', 'AWAY', -1.00, 3.80, 3.75, 1.90, 1.90, '0:3', '0:3', 'AWAY_WIN', 1.90, 'WIN', 3.25, '负负', 3, 1, '客场大捷，客让1.90高水打穿'),
+('2026-10-24', '五大联赛周六精选', '英超', '狼队', '热刺', 'AWAY', -1.00, 4.20, 3.80, 1.80, 1.80, '1:1', '1:2', 'AWAY_WIN', 1.80, 'DRAW', 3.65, '平负', 3, 0, '热刺客场一球小胜卡盘'),
+('2026-10-24', '五大联赛周六精选', '西甲', '赫塔费', '马德里竞技', 'AWAY', -1.00, 4.80, 3.50, 1.78, 1.78, '0:0', '0:2', 'AWAY_WIN', 1.78, 'WIN', 3.05, '平负', 2, 1, '马竞客场稳稳2-0打穿'),
+('2026-10-25', '五大联赛周日精选', '英超', '西汉姆联', '曼联', 'AWAY', -1.00, 3.20, 3.60, 2.15, 2.15, '0:0', '2:1', 'HOME_WIN', 3.20, 'LOSS', 1.72, '平胜', 3, 0, '曼联客让高水爆冷翻车输球'),
+('2026-10-25', '五大联赛周日精选', '英超', '切尔西', '纽卡斯尔联', 'HOME', -1.00, 1.75, 4.00, 4.20, 1.75, '1:1', '2:1', 'HOME_WIN', 1.75, 'DRAW', 3.80, '平胜', 3, 0, '切尔西2-1险胜走水'),
+('2026-10-25', '五大联赛周日精选', '英超', '阿森纳', '利物浦', 'HOME', -1.00, 2.45, 3.30, 2.90, 2.45, '2:1', '2:2', 'DRAW', 3.30, 'LOSS', 1.55, '胜平', 4, 0, '榜首大战2-2平局让负'),
+('2026-10-25', '五大联赛周日精选', '西甲', '贝蒂斯', '马德里竞技', 'AWAY', -1.00, 3.40, 3.30, 2.18, 2.18, '1:0', '1:0', 'HOME_WIN', 3.40, 'LOSS', 1.68, '胜胜', 1, 0, '客让2.18爆冷翻车输球'),
+('2026-10-25', '五大联赛周日精选', '意甲', '佛罗伦萨', '罗马', 'HOME', -1.00, 2.50, 3.25, 2.85, 2.50, '3:1', '5:1', 'HOME_WIN', 2.50, 'WIN', 4.80, '胜胜', 6, 1, '紫百合大爆发高水打穿'),
+('2026-10-25', '五大联赛周日精选', '意甲', '拉齐奥', '热那亚', 'HOME', -1.00, 1.55, 4.00, 6.00, 1.55, '1:0', '3:0', 'HOME_WIN', 1.55, 'WIN', 2.50, '胜胜', 3, 1, '主场3球完胜轻松穿盘'),
+('2026-10-25', '五大联赛周日精选', '德甲', '波鸿', '拜仁慕尼黑', 'AWAY', -1.00, 13.00, 7.00, 1.16, 1.16, '0:2', '0:5', 'AWAY_WIN', 1.16, 'WIN', 1.48, '负负', 5, 1, '拜仁客场狂轰5球打穿'),
+('2026-10-25', '五大联赛周日精选', '法甲', '尼斯', '摩纳哥', 'AWAY', -1.00, 3.30, 3.40, 2.15, 2.15, '1:1', '2:1', 'HOME_WIN', 3.30, 'LOSS', 1.70, '平胜', 3, 0, '摩纳哥客让翻车');
+
+-- ------------------------------------------------------------------------------
+-- 15. 0球与7球两极进球赔率与全场总进球大数据统计表 (extreme_goals_odds_record)
+-- 支持按天录入日职、韩职、澳超、巴甲、葡超、挪超、荷甲、五大联赛、欧冠等常见主流赛事的0球赔率、7球+赔率与开奖总进球
+-- 供前端进行0球分档、7球分档、赔率比值规律、联赛进球榜与单场测算预测
+-- ------------------------------------------------------------------------------
+DROP TABLE IF EXISTS `extreme_goals_odds_record`;
+
+CREATE TABLE `extreme_goals_odds_record` (
+    `id` BIGINT AUTO_INCREMENT COMMENT '主键ID',
+    `match_date` DATE NOT NULL COMMENT '比赛日期 (YYYY-MM-DD)',
+    `batch_title` VARCHAR(100) DEFAULT NULL COMMENT '批次/赛事组 (如 日职周六精选, 荷甲第10轮)',
+    `league_name` VARCHAR(100) NOT NULL COMMENT '联赛名称 (如 日职联, 韩职K联, 澳超, 巴甲, 葡超, 挪超, 荷甲, 英超, 西甲, 意甲, 德甲, 法甲, 欧冠等)',
+    `match_system` VARCHAR(30) NOT NULL DEFAULT 'LEAGUE' COMMENT '赛制类型 (LEAGUE:联赛积分制, CUP:杯赛淘汰赛, FRIENDLY:友谊赛, OTHER:其他)',
+    `home_team` VARCHAR(100) DEFAULT NULL COMMENT '主队名称',
+    `away_team` VARCHAR(100) DEFAULT NULL COMMENT '客队名称',
+    `zero_goals_odds` DECIMAL(6,2) NOT NULL COMMENT '0球打出初盘/终盘赔率 (如 9.50, 11.00)',
+    `seven_goals_odds` DECIMAL(6,2) NOT NULL COMMENT '7球+打出初盘/终盘赔率 (如 26.00, 35.00)',
+    `odds_ratio` DECIMAL(6,2) DEFAULT NULL COMMENT '两极赔率比率 (7+赔率 / 0球赔率)',
+    `total_goals` INT NOT NULL COMMENT '全场实际开奖总进球数 (0, 1, 2, 3, 4, 5, 6, 7+)',
+    `full_score` VARCHAR(20) DEFAULT NULL COMMENT '全场比分 (如 2:1)',
+    `goals_category` VARCHAR(30) DEFAULT NULL COMMENT '进球数分类 (ZERO_ONE:0-1小球, TWO_THREE:2-3中球, FOUR_SIX:4-6大球, SEVEN_PLUS:7+超大球)',
+    `remarks` VARCHAR(500) DEFAULT NULL COMMENT '复盘心得与备忘',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_egor_match_date` (`match_date`),
+    KEY `idx_egor_league_name` (`league_name`),
+    KEY `idx_egor_match_system` (`match_system`),
+    KEY `idx_egor_zero_odds` (`zero_goals_odds`),
+    KEY `idx_egor_seven_odds` (`seven_goals_odds`),
+    KEY `idx_egor_total_goals` (`total_goals`),
+    KEY `idx_egor_goals_category` (`goals_category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='0球与7球两极进球赔率大数据统计表';
+
+-- 预置各主流赛事真实两极进球赔率样本数据 (涵盖日职、韩职、澳超、巴甲、葡超、挪超、荷甲、五大联赛、欧冠等)
+INSERT INTO `extreme_goals_odds_record`
+(`match_date`, `batch_title`, `league_name`, `match_system`, `home_team`, `away_team`, `zero_goals_odds`, `seven_goals_odds`, `odds_ratio`, `total_goals`, `full_score`, `goals_category`, `remarks`)
+VALUES
+-- 亚洲/澳超
+('2026-10-24', '日韩澳周末精选', '日职联', 'LEAGUE', '町田泽维亚', '川崎前锋', 8.50, 36.00, 4.24, 1, '1:0', 'ZERO_ONE', '日职经典防守强队，0球低至8.50，1球小比分零封打出'),
+('2026-10-24', '日韩澳周末精选', '日职联', 'LEAGUE', '神户胜利船', 'FC东京', 9.20, 32.00, 3.48, 2, '2:0', 'TWO_THREE', '神户主场掌控节奏，稳稳2球'),
+('2026-10-24', '日韩澳周末精选', '日职联', 'LEAGUE', '广岛三箭', '京都不死鸟', 10.50, 26.00, 2.48, 3, '2:1', 'TWO_THREE', '广岛进攻火力强，打出2-3球黄金区'),
+('2026-10-24', '日韩澳周末精选', '韩职K联', 'LEAGUE', '蔚山现代', '浦项铁人', 8.80, 34.00, 3.86, 2, '1:1', 'TWO_THREE', '东海岸德比战平，比分1-1打出2球'),
+('2026-10-24', '日韩澳周末精选', '韩职K联', 'LEAGUE', '全北现代', '大邱FC', 9.80, 29.00, 2.96, 3, '2:1', 'TWO_THREE', '保级争夺激烈，全场打出3球'),
+('2026-10-25', '日韩澳周末精选', '澳超', 'LEAGUE', '墨尔本城', '悉尼FC', 14.00, 19.00, 1.36, 5, '3:2', 'FOUR_SIX', '澳超大球天堂，0球高达14.0，7+仅19.0，对攻狂轰5球大球'),
+('2026-10-25', '日韩澳周末精选', '澳超', 'LEAGUE', '阿德莱德联', '西悉尼流浪者', 13.50, 21.00, 1.56, 4, '2:2', 'FOUR_SIX', '大开大合打出4球大比分'),
+
+-- 美洲 (巴甲)
+('2026-10-25', '美洲联赛精选', '巴甲', 'LEAGUE', '帕尔梅拉斯', '福塔雷萨', 8.00, 40.00, 5.00, 1, '1:0', 'ZERO_ONE', '巴甲小球温床，0球低至8.00，7+高达40.0，1球小球打出'),
+('2026-10-25', '美洲联赛精选', '巴甲', 'LEAGUE', '弗拉门戈', '博塔弗戈', 8.50, 35.00, 4.12, 0, '0:0', 'ZERO_ONE', '榜首大战极其胶着，互交白卷打出0球爆冷'),
+('2026-10-25', '美洲联赛精选', '巴甲', 'LEAGUE', '圣保罗', '克里丘马', 9.00, 32.00, 3.56, 2, '2:0', 'TWO_THREE', '主队主场压制打出2球'),
+
+-- 欧洲主流/次级 (荷甲、葡超、挪超)
+('2026-10-26', '北欧与荷葡精选', '荷甲', 'LEAGUE', '埃因霍温', '兹沃勒', 15.00, 16.50, 1.10, 6, '6:0', 'FOUR_SIX', '荷甲豪门屠杀，0球赔率高达15.0，7+仅16.5，单边狂轰6球'),
+('2026-10-26', '北欧与荷葡精选', '荷甲', 'LEAGUE', '费耶诺德', '乌德勒支', 13.00, 20.00, 1.54, 4, '3:1', 'FOUR_SIX', '进攻大战打出4球大球'),
+('2026-10-26', '北欧与荷葡精选', '葡超', 'LEAGUE', '本菲卡', '里奥阿维', 12.00, 22.00, 1.83, 5, '5:0', 'FOUR_SIX', '葡超豪门碾压打出5球'),
+('2026-10-26', '北欧与荷葡精选', '葡超', 'LEAGUE', '波尔图', '莫雷拉人', 10.00, 28.00, 2.80, 2, '2:0', 'TWO_THREE', '稳稳两球拿下'),
+('2026-10-26', '北欧与荷葡精选', '挪超', 'LEAGUE', '博多格林特', '罗森博格', 12.50, 21.00, 1.68, 4, '3:1', 'FOUR_SIX', '挪超大球属性鲜明打出4球'),
+
+-- 五大联赛与欧冠杯赛
+('2026-10-27', '五大联赛与欧冠精选', '英超', 'LEAGUE', '曼城', '南安普顿', 14.50, 18.00, 1.24, 3, '3:0', 'TWO_THREE', '曼城主场3-0大胜'),
+('2026-10-27', '五大联赛与欧冠精选', '英超', 'LEAGUE', '阿森纳', '埃弗顿', 11.00, 26.00, 2.36, 2, '2:0', 'TWO_THREE', '枪手零封打出2球黄金区'),
+('2026-10-27', '五大联赛与欧冠精选', '西甲', 'LEAGUE', '皇家马德里', '巴塞罗那', 16.00, 18.00, 1.13, 4, '0:4', 'FOUR_SIX', '国家德比大开大合狂轰4球'),
+('2026-10-27', '五大联赛与欧冠精选', '德甲', 'LEAGUE', '拜仁慕尼黑', '波鸿', 16.50, 15.00, 0.91, 5, '5:0', 'FOUR_SIX', '7+赔率低于0球赔率，绝对大球信号打出5球'),
+('2026-10-27', '五大联赛与欧冠精选', '意甲', 'LEAGUE', '国际米兰', '尤文图斯', 10.50, 28.00, 2.67, 8, '4:4', 'SEVEN_PLUS', '意大利国家德比狂轰8球打穿7+超大球'),
+('2026-10-28', '五大联赛与欧冠精选', '欧冠', 'CUP', '皇家马德里', '多特蒙德', 15.00, 17.00, 1.13, 7, '5:2', 'SEVEN_PLUS', '欧冠逆转神剧本打出7球超高回报'),
+('2026-10-28', '五大联赛与欧冠精选', '欧冠', 'CUP', '巴塞罗那', '拜仁慕尼黑', 16.00, 16.00, 1.00, 5, '4:1', 'FOUR_SIX', '强强进攻对决打出5球');
+
+
 
 

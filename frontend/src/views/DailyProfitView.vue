@@ -2,32 +2,51 @@
   <div class="space-y-6 sm:space-y-8 pb-12">
     <!-- Mode Switcher Tabs: 穿盘版 vs 进球数版 vs 水位翻车版 vs 水位串子版 -->
     <div class="flex items-center justify-between flex-wrap gap-3">
-      <div class="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-slate-800">
+      <div class="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-slate-800 overflow-x-auto max-w-full">
         <router-link
           to="/daily-profit"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-extrabold"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-extrabold"
         >
           <span>⚽ 让球穿盘战绩版</span>
         </router-link>
         <router-link
           to="/daily-goals-profit"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-900"
         >
           <span>🥅 总进球数规律版</span>
         </router-link>
         <router-link
           to="/odds-water-profit"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-900"
         >
           <span>🌊 水位冷门翻车版</span>
         </router-link>
         <router-link
           to="/water-combo-profit"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-900"
         >
           <span>🎯 水位串子战绩版</span>
         </router-link>
+        <router-link
+          to="/handicap-odds-stats"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-900"
+        >
+          <span>📊 赔率六区间版</span>
+        </router-link>
+        <router-link
+          to="/match-odds-stepped"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-900"
+        >
+          <span>🔬 单场精细步幅版</span>
+        </router-link>
+        <router-link
+          to="/extreme-goals-odds"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-900"
+        >
+          <span>🎲 两极进球赔率版</span>
+        </router-link>
       </div>
+
 
       <div class="text-xs text-slate-400 hidden sm:flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
