@@ -215,8 +215,8 @@
       <div class="absolute -right-16 -top-16 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <!-- Header & Toggle -->
-      <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800/80">
+      <!-- Header -->
+      <div class="relative z-10 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-500/25 to-indigo-500/25 text-purple-300 border border-purple-500/40 flex items-center justify-center text-2xl shrink-0 shadow-lg shadow-purple-500/10">
             🧠
@@ -227,160 +227,33 @@
                 独家水位打单实战决策模型
               </h2>
               <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                胜平负低赔锚定法
+                大数据概率分级串关法
               </span>
             </div>
-            <p class="text-slate-400 text-xs mt-1">
-              核心原则：先看全场胜平负<strong>赔率较低的一方</strong>（盘口优势方/机构看好方），根据水位区间执行纪律化操盘决策。
+            <p class="text-slate-300 text-xs mt-1.5 leading-relaxed">
+              核心原则：按照<strong>【赔率六区间版】</strong>、<strong>【单场精细步幅版】</strong>、<strong>【两极进球赔率版】</strong>的大数据统计，按单选及落点概率进行阶梯化打单决策：
             </p>
-          </div>
-        </div>
-
-        <button
-          @click="showStrategyGuide = !showStrategyGuide"
-          class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-sm"
-        >
-          <span>{{ showStrategyGuide ? '收起操盘体系' : '展开操盘体系' }}</span>
-          <span class="text-[10px] transform transition-transform duration-200" :class="{ 'rotate-180': !showStrategyGuide }">▲</span>
-        </button>
-      </div>
-
-      <!-- Strategy Cards & Mnemonic (Collapsible) -->
-      <div v-show="showStrategyGuide" class="relative z-10 mt-5 space-y-4">
-        <!-- 5 Strategy Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
-          <!-- Card 1: <= 1.50 -->
-          <div class="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 flex flex-col justify-between hover:border-emerald-500/50 hover:bg-slate-900 transition group shadow-md">
-            <div>
-              <div class="flex items-center justify-between gap-1 mb-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  超低水稳胆
-                </span>
-                <span class="font-mono text-xs font-bold text-slate-400">≤ 1.50</span>
-              </div>
-              <div class="text-xs text-slate-400 font-semibold mb-1">操盘策略:</div>
-              <div class="text-sm font-black text-emerald-400 flex items-center gap-1 mb-2">
-                <span>🎯</span>
-                <span>直接买让球方独赢</span>
-              </div>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                实力层面断层碾压，机构底仓深度护盘，正路胜率极高，作为多串保底的核心胆材。
-              </p>
+            <div class="flex flex-wrap items-center gap-2 mt-2 text-xs">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>单选概率 <strong>&gt; 62%</strong></span>
+                <span class="text-slate-500 font-mono">➜</span>
+                <span class="font-bold text-white">做长串 7过567 处理</span>
+              </span>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                <span>概率区间 <strong>55% ~ 61%</strong></span>
+                <span class="text-slate-500 font-mono">➜</span>
+                <span class="font-bold text-white">做常规串单 7过2567 处理</span>
+              </span>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                <span>单选概率 <strong>&lt; 55%</strong></span>
+                <span class="text-slate-300">视情况（可能选总进球数）而选</span>
+                <span class="text-slate-500 font-mono">➜</span>
+                <span class="font-bold text-white">做常规串单 3过23 处理</span>
+              </span>
             </div>
-            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-emerald-400/80 font-mono flex items-center justify-between">
-              <span>核心基石稳胆</span>
-              <span>确定性高</span>
-            </div>
-          </div>
-
-          <!-- Card 2: 1.51 ~ 1.69 -->
-          <div class="p-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 flex flex-col justify-between hover:border-amber-500/50 hover:bg-slate-900 transition group shadow-md">
-            <div>
-              <div class="flex items-center justify-between gap-1 mb-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  中低水多维研判
-                </span>
-                <span class="font-mono text-xs font-bold text-slate-400">1.51 - 1.69</span>
-              </div>
-              <div class="text-xs text-slate-400 font-semibold mb-1">操盘策略:</div>
-              <div class="text-sm font-black text-amber-400 flex items-center gap-1 mb-2">
-                <span>🔍</span>
-                <span>买独赢 或 让球负</span>
-              </div>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                强队占优但需防“赢球输盘”。结合<strong>历史交战、近期状态、联赛即时排名</strong>研判：状态火热单选独赢，状态疲软或遇克星防让负。
-              </p>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-amber-400/80 font-mono flex items-center justify-between">
-              <span>交锋/近况/战意</span>
-              <span>防卡盘倒灶</span>
-            </div>
-          </div>
-
-          <!-- Card 3: 1.70 ~ 1.79 -->
-          <div class="p-4 rounded-2xl bg-slate-900/80 border border-rose-500/30 flex flex-col justify-between hover:border-rose-500/50 hover:bg-slate-900 transition group shadow-md">
-            <div>
-              <div class="flex items-center justify-between gap-1 mb-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  中水谨防诱盘
-                </span>
-                <span class="font-mono text-xs font-bold text-slate-400">1.70 - 1.79</span>
-              </div>
-              <div class="text-xs text-slate-400 font-semibold mb-1">操盘策略:</div>
-              <div class="text-sm font-black text-rose-400 flex items-center gap-1 mb-2">
-                <span>🛡️</span>
-                <span>买让球方的让球负</span>
-              </div>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                机构经典“表面便宜”诱上区间，让球方赢一球走水或直接打平翻车几率大，买让负安全边际强。
-              </p>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-rose-400/80 font-mono flex items-center justify-between">
-              <span>逆向博受让不败</span>
-              <span>防诱盘陷阱</span>
-            </div>
-          </div>
-
-          <!-- Card 4: 1.80 ~ 2.19 -->
-          <div class="p-4 rounded-2xl bg-slate-900/80 border border-purple-500/30 flex flex-col justify-between hover:border-purple-500/50 hover:bg-slate-900 transition group shadow-md">
-            <div>
-              <div class="flex items-center justify-between gap-1 mb-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  黄金博弈区间
-                </span>
-                <span class="font-mono text-xs font-bold text-slate-400">1.80 - 2.19</span>
-              </div>
-              <div class="text-xs text-slate-400 font-semibold mb-1">操盘策略:</div>
-              <div class="text-sm font-black text-purple-400 flex items-center gap-1 mb-2">
-                <span>🔥</span>
-                <span>直接买低赔方独赢</span>
-              </div>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                均势博弈中低赔方略占先手，此水位打出回报率极其丰厚（2.0倍左右），是博取高投资回报比(ROI)的核心价值区间。
-              </p>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-purple-400/80 font-mono flex items-center justify-between">
-              <span>黄金价值甜点区</span>
-              <span>高ROI来源</span>
-            </div>
-          </div>
-
-          <!-- Card 5: >= 2.20 -->
-          <div class="p-4 rounded-2xl bg-slate-900/80 border border-blue-500/30 flex flex-col justify-between hover:border-blue-500/50 hover:bg-slate-900 transition group shadow-md">
-            <div>
-              <div class="flex items-center justify-between gap-1 mb-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  高水让步乏力
-                </span>
-                <span class="font-mono text-xs font-bold text-slate-400">≥ 2.20</span>
-              </div>
-              <div class="text-xs text-slate-400 font-semibold mb-1">操盘策略:</div>
-              <div class="text-sm font-black text-blue-400 flex items-center gap-1 mb-2">
-                <span>⚡</span>
-                <span>买让球方的让球负</span>
-              </div>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                例如主胜赔 2.23，主队让球 (-1)，直接买<strong>主让球负</strong>。让球方胜赔超2.20支撑无力，逆向博受让下盘胜率极佳。
-              </p>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-blue-400/80 font-mono flex items-center justify-between">
-              <span>例:主2.23让球买让负</span>
-              <span>逆向博高胜率</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mnemonic Bar -->
-        <div class="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-base">💡</span>
-            <span class="font-bold text-purple-300">实战操盘口诀速记：</span>
-            <span class="text-slate-300 leading-normal">
-              超低稳胆买让赢 · 中低多维看交锋 · 一七诱盘买让负 · 一八二一买低赢 · 二二以上果断让负！
-            </span>
-          </div>
-          <div class="text-[11px] font-mono text-slate-400 shrink-0">
-            锚定规则：<strong>以胜平负较低方为基准</strong>
           </div>
         </div>
       </div>
@@ -924,7 +797,6 @@ const submitting = ref(false)
 const dialogVisible = ref(false)
 const isEditing = ref(false)
 const formRef = ref(null)
-const showStrategyGuide = ref(true)
 const showModalStrategyGuide = ref(false)
 
 const dateRange = ref([])

@@ -373,11 +373,24 @@
                 {{ b.avgHandicapOdds > 0 ? b.avgHandicapOdds.toFixed(2) : '-' }}
               </td>
 
-              <!-- 常见总进球 -->
+              <!-- 常见总进球 (显示前两个常见进球数及占比) -->
               <td class="py-3 px-3 text-center">
-                <span class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 text-[11px] font-medium">
-                  {{ b.mostCommonGoals }}
-                </span>
+                <div v-if="b.topCommonGoals && b.topCommonGoals.length > 0" class="flex items-center justify-center gap-1.5 flex-wrap">
+                  <span
+                    v-for="(item, idx) in b.topCommonGoals"
+                    :key="idx"
+                    class="px-2 py-0.5 rounded text-[11px] inline-flex items-center gap-1 whitespace-nowrap"
+                    :class="[
+                      idx === 0
+                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 font-semibold'
+                        : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 font-normal'
+                    ]"
+                  >
+                    <span>{{ item.goals }}球</span>
+                    <span class="font-mono text-[10px] opacity-90">({{ item.rate }}%)</span>
+                  </span>
+                </div>
+                <span v-else class="text-slate-500">-</span>
               </td>
 
               <!-- 高发半全场 -->
@@ -1861,6 +1874,7 @@ const steppedBuckets = computed(() => {
         goalsDistribution: {},
         halfFullDistribution: {},
         mostCommonGoals: '-',
+        topCommonGoals: [],
         mostCommonHalfFull: '-'
       })
     }
@@ -1915,16 +1929,26 @@ const steppedBuckets = computed(() => {
         b.avgHandicapOdds = Number((sumHrOdds / hrMatches.length).toFixed(2))
       }
 
-      // 常见进球众数
-      let maxGCnt = -1
-      let bestG = '-'
-      Object.entries(b.goalsDistribution).forEach(([goals, cnt]) => {
-        if (cnt > maxGCnt) {
-          maxGCnt = cnt
-          bestG = `${goals}球 (${cnt}场)`
-        }
-      })
-      b.mostCommonGoals = bestG
+      // 常见进球众数 (统计最常见的前两个进球数及各自占比)
+      const sortedGoals = Object.entries(b.goalsDistribution)
+        .map(([goals, cnt]) => ({
+          goals: String(goals),
+          cnt,
+          rate: Number(((cnt / b.totalCount) * 100).toFixed(1))
+        }))
+        .sort((x, y) => {
+          if (y.cnt !== x.cnt) return y.cnt - x.cnt
+          return Number(x.goals) - Number(y.goals)
+        })
+
+      b.topCommonGoals = sortedGoals.slice(0, 2)
+      if (b.topCommonGoals.length > 0) {
+        b.mostCommonGoals = b.topCommonGoals
+          .map(item => `${item.goals}球 (${item.rate}%)`)
+          .join(' · ')
+      } else {
+        b.mostCommonGoals = '-'
+      }
 
       // 高发半全场众数
       let maxHFCnt = -1
