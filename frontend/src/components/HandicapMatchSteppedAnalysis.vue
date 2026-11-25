@@ -96,25 +96,50 @@
           </div>
         </div>
 
-        <!-- 维度 2: 赛制类型叠加 (联赛 / 杯赛淘汰赛 / 友谊赛) -->
+        <!-- 维度 2: 联赛名称筛选 (去重查出已录入的所有联赛作为选项) -->
         <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="text-slate-400 font-semibold">赛制:</span>
-          <div class="inline-flex p-0.5 rounded-xl bg-slate-950/80 border border-slate-800">
+          <span class="text-slate-400 font-semibold">联赛:</span>
+          <div class="inline-flex p-0.5 rounded-xl bg-slate-950/80 border border-slate-800 flex-wrap">
             <button
-              v-for="sys in systemOptions"
-              :key="sys.value"
-              @click="systemFilter = sys.value"
-              class="px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1"
+              @click="leagueFilter = 'ALL'"
+              class="px-2.5 py-1 rounded-lg transition text-xs font-semibold"
               :class="[
-                systemFilter === sys.value
+                leagueFilter === 'ALL'
                   ? 'bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30'
                   : 'text-slate-400 hover:text-white'
               ]"
             >
-              <span>{{ sys.icon }}</span>
-              <span>{{ sys.label }}</span>
+              全部联赛
+            </button>
+            <button
+              v-for="leg in topLeagues"
+              :key="leg"
+              @click="leagueFilter = leg"
+              class="px-2.5 py-1 rounded-lg transition text-xs font-medium"
+              :class="[
+                leagueFilter === leg
+                  ? 'bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30'
+                  : 'text-slate-400 hover:text-white'
+              ]"
+            >
+              {{ leg }}
             </button>
           </div>
+          <el-select
+            v-model="leagueFilter"
+            placeholder="筛选或搜索联赛"
+            size="small"
+            filterable
+            class="!w-36 custom-select"
+          >
+            <el-option label="全部联赛 (ALL)" value="ALL" />
+            <el-option
+              v-for="leg in distinctLeagues"
+              :key="leg"
+              :label="leg"
+              :value="leg"
+            />
+          </el-select>
         </div>
 
         <!-- 维度 3: 时间范围快捷预设 (全部 / 最近一个月 / 最近3个月) + 自定义日历 -->
@@ -645,7 +670,7 @@
 
             <tr v-if="filteredMatches.length === 0">
               <td colspan="13" class="py-8 text-center text-slate-500">
-                暂无符合当前筛选（步幅/让球方/赛制/时间）的比赛明细记录，点击右上角【录入单场比赛】快速录入
+                暂无符合当前筛选（步幅/让球方/联赛/时间）的比赛明细记录，点击右上角【录入单场比赛】快速录入
               </td>
             </tr>
           </tbody>
@@ -1034,26 +1059,27 @@
     </el-dialog>
 
     <!-- 4. 单场智能测算 (胜平负概率与期望ROI) 交互弹窗 -->
+    <!-- 4. 单场智能测算 (胜平负、进球数、半全场、比分全维度概率与期望ROI) 交互弹窗 -->
     <el-dialog
       v-model="simulateModalVisible"
-      title="🧮 单场比赛开奖概率与期望 ROI 智能测算引擎"
-      width="92%"
-      class="custom-dark-dialog max-w-5xl"
+      title="🧮 单场比赛全维度开奖概率与期望 ROI 智能测算引擎"
+      width="94%"
+      class="custom-dark-dialog max-w-7xl"
       destroy-on-close
     >
-      <div class="space-y-4 max-h-[80vh] overflow-y-auto pr-1 text-slate-200">
+      <div class="space-y-4 max-h-[82vh] overflow-y-auto pr-1 text-slate-200">
         <!-- 顶部引导与说明 -->
         <div class="p-3 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-sky-950/30 to-blue-950/40 border border-cyan-800/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
           <div class="flex items-center gap-2">
             <span class="text-base">💡</span>
             <div>
               <span class="font-bold text-cyan-300">量化原理：</span>
-              <span class="text-slate-300">根据输入的比赛赛制、让球方及胜平负赔率，自动检索历史同赔同赛制真实样本，通过打出概率与赔率推算单项期望回报率 (ROI = (胜率 × 赔率 - 1) × 100%)。</span>
+              <span class="text-slate-300">输入比赛胜平负、总进球数、半场胜平负或比分赔率，系统自动检索历史同盘同赛制样本，精确推算所有选项的实际胜率与期望回报率 (ROI = (胜率 × 赔率 - 1) × 100%)，自动定位正期望超额价值点。</span>
             </div>
           </div>
           <div class="flex items-center gap-1.5 flex-shrink-0">
             <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-              ROI > 0 : 正期望超额价值
+              ROI > 0 : 正期望超额价值 (Value Bet)
             </span>
           </div>
         </div>
@@ -1075,182 +1101,467 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <!-- 左侧输入栏 (5 列) -->
-          <div class="lg:col-span-5 space-y-3.5">
+          <div class="lg:col-span-5 space-y-3">
             <div class="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3.5">
               <div class="text-xs font-bold text-cyan-400 flex items-center justify-between">
                 <span class="flex items-center gap-1.5">
                   <span>⚙️</span>
-                  <span>输入比赛盘口与赔率</span>
+                  <span>输入比赛各玩法开奖赔率</span>
                 </span>
-                <span class="text-[10px] text-slate-400 font-mono">实时联动测算</span>
+                <span class="text-[10px] text-slate-400 font-mono">实时秒级联动测算</span>
               </div>
 
-              <!-- 赛制选择 -->
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">赛制类型</label>
-                <div class="grid grid-cols-4 gap-1.5 text-xs">
-                  <button
-                    v-for="sys in simSystemOptions"
-                    :key="sys.value"
-                    @click="simulateForm.matchSystem = sys.value; runSimulation()"
-                    class="py-1.5 px-2 rounded-xl border text-center transition font-semibold text-[11px]"
-                    :class="[
-                      simulateForm.matchSystem === sys.value
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold'
-                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
-                    ]"
-                  >
-                    {{ sys.label }}
-                  </button>
+              <!-- 输入维度 Tabs -->
+              <div class="grid grid-cols-4 gap-1 p-1 bg-slate-900/90 rounded-xl border border-slate-800 text-[11px]">
+                <button
+                  @click="simInputTab = 'BASE'"
+                  class="py-1.5 rounded-lg transition text-center font-bold flex items-center justify-center gap-1"
+                  :class="simInputTab === 'BASE' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow' : 'text-slate-400 hover:text-white'"
+                >
+                  <span>🏆 胜平负/让球</span>
+                  <span v-if="filledHandicapCount > 0" class="text-[9px] px-1 rounded-full bg-sky-500 text-slate-950 font-black">+{{ filledHandicapCount }}</span>
+                </button>
+                <button
+                  @click="simInputTab = 'GOALS'"
+                  class="py-1.5 rounded-lg transition text-center font-bold flex items-center justify-center gap-1"
+                  :class="simInputTab === 'GOALS' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow' : 'text-slate-400 hover:text-white'"
+                >
+                  <span>⚽ 进球数</span>
+                  <span v-if="filledGoalsCount > 0" class="text-[9px] px-1 rounded-full bg-amber-500 text-slate-950 font-black">{{ filledGoalsCount }}</span>
+                </button>
+                <button
+                  @click="simInputTab = 'HALFFULL'"
+                  class="py-1.5 rounded-lg transition text-center font-bold flex items-center justify-center gap-1"
+                  :class="simInputTab === 'HALFFULL' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow' : 'text-slate-400 hover:text-white'"
+                >
+                  <span>🌓 半全场</span>
+                  <span v-if="filledHalfFullCount > 0" class="text-[9px] px-1 rounded-full bg-indigo-500 text-slate-950 font-black">{{ filledHalfFullCount }}</span>
+                </button>
+                <button
+                  @click="simInputTab = 'SCORE'"
+                  class="py-1.5 rounded-lg transition text-center font-bold flex items-center justify-center gap-1"
+                  :class="simInputTab === 'SCORE' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow' : 'text-slate-400 hover:text-white'"
+                >
+                  <span>🎯 比分</span>
+                  <span v-if="filledScoreCount > 0" class="text-[9px] px-1 rounded-full bg-rose-500 text-slate-950 font-black">{{ filledScoreCount }}</span>
+                </button>
+              </div>
+
+              <!-- 1. 基础胜平负与盘口 Tab -->
+              <div v-show="simInputTab === 'BASE'" class="space-y-3">
+                <!-- 联赛与赛制筛选 (去重查出作为选项) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                      <label class="text-[11px] font-semibold text-slate-400">限定联赛 (去重选项)</label>
+                      <span class="text-[10px] text-teal-400 font-mono">已收录 {{ distinctLeagues.length }} 个</span>
+                    </div>
+                    <el-select
+                      v-model="simulateForm.leagueName"
+                      placeholder="全部联赛 (ALL)"
+                      size="small"
+                      filterable
+                      class="!w-full custom-select"
+                      @change="runSimulation"
+                    >
+                      <el-option label="🌐 全部联赛 (ALL)" value="ALL" />
+                      <el-option
+                        v-for="leg in distinctLeagues"
+                        :key="leg"
+                        :label="leg"
+                        :value="leg"
+                      />
+                    </el-select>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">赛制类型</label>
+                    <el-select
+                      v-model="simulateForm.matchSystem"
+                      size="small"
+                      class="!w-full custom-select"
+                      @change="runSimulation"
+                    >
+                      <el-option
+                        v-for="sys in simSystemOptions"
+                        :key="sys.value"
+                        :label="sys.label"
+                        :value="sys.value"
+                      />
+                    </el-select>
+                  </div>
                 </div>
-              </div>
 
-              <!-- 让球方与盘口 -->
-              <div class="grid grid-cols-2 gap-3">
+                <!-- 让球方与盘口 -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">让球方</label>
+                    <div class="grid grid-cols-2 gap-1.5">
+                      <button
+                        @click="simulateForm.handicapSide = 'HOME'; runSimulation()"
+                        class="py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1"
+                        :class="[
+                          simulateForm.handicapSide === 'HOME'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                            : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
+                        ]"
+                      >
+                        <span>🏠 主让</span>
+                      </button>
+                      <button
+                        @click="simulateForm.handicapSide = 'AWAY'; runSimulation()"
+                        class="py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1"
+                        :class="[
+                          simulateForm.handicapSide === 'AWAY'
+                            ? 'bg-blue-500/20 text-blue-300 border-blue-500/50'
+                            : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
+                        ]"
+                      >
+                        <span>✈️ 客让</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">让球盘口</label>
+                    <el-select
+                      v-model="simulateForm.handicapValue"
+                      class="!w-full custom-select"
+                      @change="runSimulation"
+                    >
+                      <el-option label="让半球 (-0.50)" :value="-0.50" />
+                      <el-option label="半一 (-0.75)" :value="-0.75" />
+                      <el-option label="让一球 (-1.00)" :value="-1.00" />
+                      <el-option label="一球球半 (-1.25)" :value="-1.25" />
+                      <el-option label="让球半 (-1.50)" :value="-1.50" />
+                      <el-option label="两球 (-2.00)" :value="-2.00" />
+                    </el-select>
+                  </div>
+                </div>
+
+                <!-- 胜平负三项赔率 -->
+                <div class="space-y-2">
+                  <div class="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
+                    <span>胜平负赔率 (请按实际盘口输入)</span>
+                    <span class="text-[10px] text-amber-400/80">
+                      {{ simulateForm.handicapSide === 'HOME' ? '基准让球胜赔: 主胜' : '基准让球胜赔: 客胜' }}
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
+                      <span class="text-[10px] font-bold text-emerald-400 block">主胜赔率</span>
+                      <el-input-number
+                        v-model="simulateForm.homeWinOdds"
+                        :precision="2"
+                        :step="0.05"
+                        :min="1.01"
+                        :max="25.0"
+                        class="!w-full"
+                        size="small"
+                        @change="runSimulation"
+                      />
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
+                      <span class="text-[10px] font-bold text-amber-400 block">平局赔率</span>
+                      <el-input-number
+                        v-model="simulateForm.drawOdds"
+                        :precision="2"
+                        :step="0.05"
+                        :min="1.01"
+                        :max="25.0"
+                        class="!w-full"
+                        size="small"
+                        @change="runSimulation"
+                      />
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
+                      <span class="text-[10px] font-bold text-rose-400 block">客胜赔率</span>
+                      <el-input-number
+                        v-model="simulateForm.awayWinOdds"
+                        :precision="2"
+                        :step="0.05"
+                        :min="1.01"
+                        :max="25.0"
+                        class="!w-full"
+                        size="small"
+                        @change="runSimulation"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 让球胜平负三项赔率 (可输入测算让球ROI) -->
+                <div class="space-y-2">
+                  <div class="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                      <span>🛡️ 让球胜平负赔率</span>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">测算让球ROI</span>
+                    </span>
+                    <span class="text-[10px] text-cyan-400 font-mono">
+                      {{ simulateForm.handicapSide === 'HOME' ? '主' : '客' }}({{ simulateForm.handicapValue > 0 ? '+' + simulateForm.handicapValue : simulateForm.handicapValue }})
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold text-sky-400">让胜赔率</span>
+                        <span class="text-[9px] font-mono text-slate-500">胜>盘</span>
+                      </div>
+                      <el-input-number
+                        v-model="simulateForm.handicapHomeWinOdds"
+                        :precision="2"
+                        :step="0.05"
+                        :min="1.01"
+                        :max="25.0"
+                        placeholder="让胜"
+                        class="!w-full"
+                        size="small"
+                        @change="runSimulation"
+                      />
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold text-indigo-400">让平赔率</span>
+                        <span class="text-[9px] font-mono text-slate-500">恰赢球</span>
+                      </div>
+                      <el-input-number
+                        v-model="simulateForm.handicapDrawOdds"
+                        :precision="2"
+                        :step="0.05"
+                        :min="1.01"
+                        :max="25.0"
+                        placeholder="让平"
+                        class="!w-full"
+                        size="small"
+                        @change="runSimulation"
+                      />
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold text-purple-400">让负赔率</span>
+                        <span class="text-[9px] font-mono text-slate-500">冷/下盘</span>
+                      </div>
+                      <el-input-number
+                        v-model="simulateForm.handicapAwayWinOdds"
+                        :precision="2"
+                        :step="0.05"
+                        :min="1.01"
+                        :max="25.0"
+                        placeholder="让负"
+                        class="!w-full"
+                        size="small"
+                        @change="runSimulation"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 样本步幅容差选择 -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">让球方</label>
-                  <div class="grid grid-cols-2 gap-1.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-[11px] font-semibold text-slate-400">样本步幅容差</label>
+                    <span class="text-[10px] text-cyan-300 font-mono">
+                      赔率匹配: [{{ simOddsRangeText }}]
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-4 gap-1.5 text-xs">
                     <button
-                      @click="simulateForm.handicapSide = 'HOME'; runSimulation()"
-                      class="py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1"
+                      v-for="t in [0.05, 0.10, 0.15, 0.20]"
+                      :key="t"
+                      @click="simulateForm.tolerance = t; runSimulation()"
+                      class="py-1.5 rounded-xl border font-bold transition text-center"
                       :class="[
-                        simulateForm.handicapSide === 'HOME'
+                        simulateForm.tolerance === t
                           ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                           : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
                       ]"
                     >
-                      <span>🏠 主让</span>
-                    </button>
-                    <button
-                      @click="simulateForm.handicapSide = 'AWAY'; runSimulation()"
-                      class="py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1"
-                      :class="[
-                        simulateForm.handicapSide === 'AWAY'
-                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/50'
-                          : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
-                      ]"
-                    >
-                      <span>✈️ 客让</span>
+                      ±{{ t.toFixed(2) }}
                     </button>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">让球盘口</label>
-                  <el-select
-                    v-model="simulateForm.handicapValue"
-                    class="!w-full custom-select"
-                    @change="runSimulation"
+              <!-- 2. 进球数赔率 Tab -->
+              <div v-show="simInputTab === 'GOALS'" class="space-y-2.5">
+                <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
+                  ⚽ 输入 0~7+ 球对应开奖赔率，自动推算各个总进球数的历史命中率与期望 ROI：
+                </div>
+                <div class="grid grid-cols-4 gap-2">
+                  <div
+                    v-for="g in ['0','1','2','3','4','5','6','7+']"
+                    :key="g"
+                    class="p-2 rounded-xl bg-slate-900 border border-slate-800 space-y-1 hover:border-amber-500/40 transition"
                   >
-                    <el-option label="让半球 (-0.50)" :value="-0.50" />
-                    <el-option label="半一 (-0.75)" :value="-0.75" />
-                    <el-option label="让一球 (-1.00)" :value="-1.00" />
-                    <el-option label="一球球半 (-1.25)" :value="-1.25" />
-                    <el-option label="让球半 (-1.50)" :value="-1.50" />
-                    <el-option label="两球 (-2.00)" :value="-2.00" />
-                  </el-select>
+                    <div class="flex items-center justify-between text-[11px]">
+                      <span class="font-bold text-amber-300">{{ g === '7+' ? '7+球' : `${g}球` }}</span>
+                      <span v-if="simulateResult?.goalsDistribution?.[`${g}球`] || simulateResult?.goalsDistribution?.[g]" class="text-[10px] text-cyan-400 font-mono">
+                        {{ simulateResult?.goalsDistribution?.[`${g}球`] || simulateResult?.goalsDistribution?.[g] }}场
+                      </span>
+                    </div>
+                    <el-input-number
+                      v-model="simulateForm.goalsOdds[g]"
+                      :precision="2"
+                      :step="0.2"
+                      :min="1.01"
+                      :max="100.0"
+                      placeholder="赔率"
+                      class="!w-full"
+                      size="small"
+                      :controls="false"
+                      @change="runSimulation"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <!-- 胜平负三项赔率 -->
-              <div class="space-y-2">
-                <div class="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
-                  <span>胜平负赔率 (请按实际盘口输入)</span>
-                  <span class="text-[10px] text-amber-400/80">
-                    {{ simulateForm.handicapSide === 'HOME' ? '基准胜赔: 主胜' : '基准胜赔: 客胜' }}
-                  </span>
+              <!-- 3. 半全场赔率 Tab -->
+              <div v-show="simInputTab === 'HALFFULL'" class="space-y-2.5">
+                <div class="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-indigo-300">
+                  🌓 输入半场胜平负（9种组合）对应赔率，实时测算冷门/高赔半全场的期望回报率：
                 </div>
                 <div class="grid grid-cols-3 gap-2">
-                  <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
-                    <span class="text-[10px] font-bold text-emerald-400 block">主胜赔率</span>
+                  <div
+                    v-for="hf in ['胜胜','胜平','胜负','平胜','平平','平负','负胜','负平','负负']"
+                    :key="hf"
+                    class="p-2 rounded-xl bg-slate-900 border border-slate-800 space-y-1 hover:border-indigo-500/40 transition"
+                  >
+                    <div class="flex items-center justify-between text-[11px]">
+                      <span class="font-bold text-indigo-300">{{ hf }}</span>
+                      <span v-if="simulateResult?.halfFullDistribution?.[hf]" class="text-[10px] text-cyan-400 font-mono">
+                        {{ simulateResult.halfFullDistribution[hf] }}场
+                      </span>
+                    </div>
                     <el-input-number
-                      v-model="simulateForm.homeWinOdds"
+                      v-model="simulateForm.halfFullOdds[hf]"
                       :precision="2"
-                      :step="0.05"
+                      :step="0.5"
                       :min="1.01"
-                      :max="25.0"
+                      :max="200.0"
+                      placeholder="赔率"
                       class="!w-full"
                       size="small"
-                      @change="runSimulation"
-                    />
-                  </div>
-                  <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
-                    <span class="text-[10px] font-bold text-amber-400 block">平局赔率</span>
-                    <el-input-number
-                      v-model="simulateForm.drawOdds"
-                      :precision="2"
-                      :step="0.05"
-                      :min="1.01"
-                      :max="25.0"
-                      class="!w-full"
-                      size="small"
-                      @change="runSimulation"
-                    />
-                  </div>
-                  <div class="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-1">
-                    <span class="text-[10px] font-bold text-rose-400 block">客胜赔率</span>
-                    <el-input-number
-                      v-model="simulateForm.awayWinOdds"
-                      :precision="2"
-                      :step="0.05"
-                      :min="1.01"
-                      :max="25.0"
-                      class="!w-full"
-                      size="small"
+                      :controls="false"
                       @change="runSimulation"
                     />
                   </div>
                 </div>
               </div>
 
-              <!-- 样本步幅容差选择 -->
-              <div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <label class="text-[11px] font-semibold text-slate-400">样本步幅容差</label>
-                  <span class="text-[10px] text-cyan-300 font-mono">
-                    赔率匹配: [{{ simOddsRangeText }}]
-                  </span>
-                </div>
-                <div class="grid grid-cols-4 gap-1.5 text-xs">
+              <!-- 4. 比分赔率 Tab -->
+              <div v-show="simInputTab === 'SCORE'" class="space-y-2.5">
+                <div class="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300 flex items-center justify-between gap-2">
+                  <span>🎯 输入比分及赔率（可快速导入样本高发比分，或自由录入任意比分）：</span>
                   <button
-                    v-for="t in [0.05, 0.10, 0.15, 0.20]"
-                    :key="t"
-                    @click="simulateForm.tolerance = t; runSimulation()"
-                    class="py-1.5 rounded-xl border font-bold transition text-center"
-                    :class="[
-                      simulateForm.tolerance === t
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
-                    ]"
+                    @click="fillSampleHighFreqScores"
+                    class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 font-bold whitespace-nowrap text-[10px]"
                   >
-                    ±{{ t.toFixed(2) }}
+                    📥 导入样本高发比分
+                  </button>
+                </div>
+
+                <!-- 自定义添加比分行 -->
+                <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800">
+                  <el-input
+                    v-model="customScoreInput"
+                    placeholder="比分如 2:1"
+                    class="w-28 custom-input"
+                    size="small"
+                  />
+                  <el-input-number
+                    v-model="customOddsInput"
+                    :precision="2"
+                    :step="0.5"
+                    :min="1.01"
+                    :max="500.0"
+                    placeholder="赔率"
+                    class="w-28"
+                    size="small"
+                    :controls="false"
+                  />
+                  <button
+                    @click="addCustomScore"
+                    class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <span>➕ 添加</span>
+                  </button>
+                </div>
+
+                <!-- 比分卡片列表 -->
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1">
+                  <div
+                    v-for="(item, idx) in simulateForm.scoreOddsList"
+                    :key="idx"
+                    class="p-2 rounded-xl bg-slate-900 border border-slate-800 relative group space-y-1 hover:border-rose-500/40 transition"
+                  >
+                    <button
+                      @click="removeScore(idx)"
+                      title="移除此比分"
+                      class="absolute top-1 right-1 text-slate-500 hover:text-rose-400 text-xs opacity-0 group-hover:opacity-100 transition px-1"
+                    >
+                      ✕
+                    </button>
+                    <div class="flex items-center justify-between text-[11px]">
+                      <span class="font-bold text-rose-300 font-mono">{{ item.score }}</span>
+                      <span class="text-[9px] text-slate-400 font-mono">
+                        {{ getScoreHits(item.score) }}场
+                      </span>
+                    </div>
+                    <el-input-number
+                      v-model="item.odds"
+                      :precision="2"
+                      :step="0.5"
+                      :min="1.01"
+                      :max="500.0"
+                      placeholder="赔率"
+                      class="!w-full"
+                      size="small"
+                      :controls="false"
+                      @change="runSimulation"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 重新计算触发与快速辅助按钮 -->
+              <div class="space-y-2 pt-2 border-t border-slate-800/80">
+                <button
+                  @click="runSimulation"
+                  :disabled="simulateLoading"
+                  class="w-full py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-1.5"
+                >
+                  <span v-if="simulateLoading" class="animate-spin">⏳</span>
+                  <span v-else>⚡</span>
+                  <span>{{ simulateLoading ? '正在检索库内样本计算...' : '立即测算全玩法概率与期望 ROI' }}</span>
+                </button>
+
+                <div class="flex items-center justify-between gap-2 text-[11px]">
+                  <button
+                    @click="fillDemoOdds"
+                    class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 hover:border-amber-500/40 transition flex items-center gap-1"
+                  >
+                    <span>✨ 一键填入全玩法示范赔率</span>
+                  </button>
+                  <button
+                    @click="clearExtraOdds"
+                    class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-500/40 transition flex items-center gap-1"
+                  >
+                    <span>🗑️ 清空玩法赔率</span>
                   </button>
                 </div>
               </div>
-
-              <!-- 重新计算触发按钮 -->
-              <button
-                @click="runSimulation"
-                :disabled="simulateLoading"
-                class="w-full py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-1.5"
-              >
-                <span v-if="simulateLoading" class="animate-spin">⏳</span>
-                <span v-else>⚡</span>
-                <span>{{ simulateLoading ? '正在检索库内样本计算...' : '立即测算胜平负概率与期望 ROI' }}</span>
-              </button>
             </div>
           </div>
 
           <!-- 右侧测算结果看板 (7 列) -->
           <div class="lg:col-span-7 space-y-3.5">
             <!-- 样本匹配概况 Bar -->
-            <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs">
               <div class="flex items-center gap-2">
-                <span class="text-xs text-slate-400">库内历史同类样本:</span>
-                <span class="text-lg font-black font-mono text-cyan-300">
+                <span class="text-slate-400">库内历史样本:</span>
+                <span class="text-base font-black font-mono text-cyan-300">
                   {{ simulateResult?.sampleCount ?? 0 }}
                 </span>
-                <span class="text-xs text-slate-400">场</span>
+                <span class="text-slate-400">场</span>
                 <span
                   class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
                   :class="[
@@ -1265,182 +1576,620 @@
                 </span>
               </div>
 
-              <div class="text-[11px] text-slate-400 font-mono">
-                匹配区间: <span class="text-slate-200 font-bold">{{ simulateResult?.oddsRangeDesc || '--' }}</span>
+              <!-- 正期望超额项标记 -->
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="positiveRoiCount > 0"
+                  class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 animate-pulse"
+                >
+                  <span>🔥 发现</span>
+                  <span class="font-mono text-white text-xs">{{ positiveRoiCount }}</span>
+                  <span>个正期望项 (ROI &gt; 0)</span>
+                </span>
+                <span v-else class="text-[11px] text-slate-500">
+                  暂无正期望超额项
+                </span>
+
+                <!-- 切换视图：综合天梯榜 vs 分类看板 -->
+                <div class="flex items-center gap-1 p-0.5 bg-slate-900 rounded-lg border border-slate-800 text-[10px]">
+                  <button
+                    @click="simResultView = 'ALL_ROI'"
+                    class="px-2 py-1 rounded font-bold transition"
+                    :class="simResultView === 'ALL_ROI' ? 'bg-cyan-500/20 text-cyan-300 font-extrabold' : 'text-slate-400 hover:text-white'"
+                  >
+                    🔥 综合天梯
+                  </button>
+                  <button
+                    @click="simResultView = 'CATEGORIES'"
+                    class="px-2 py-1 rounded font-bold transition"
+                    :class="simResultView === 'CATEGORIES' ? 'bg-cyan-500/20 text-cyan-300 font-extrabold' : 'text-slate-400 hover:text-white'"
+                  >
+                    📊 分类看板
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- 核心：胜平负三大选项概率 & ROI 卡片 -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <!-- 1. 主胜卡片 -->
-              <div
-                class="p-3.5 rounded-2xl border transition relative overflow-hidden flex flex-col justify-between"
-                :class="[
-                  simulateResult?.bestChoice === 'HOME_WIN'
-                    ? 'bg-gradient-to-b from-emerald-950/40 to-slate-950/80 border-emerald-500/60 shadow-lg shadow-emerald-500/15'
-                    : 'bg-slate-950/70 border-slate-800/80'
-                ]"
-              >
-                <div v-if="simulateResult?.bestChoice === 'HOME_WIN'" class="absolute -right-6 -top-6 w-16 h-16 bg-emerald-500/20 rounded-full blur-xl pointer-events-none"></div>
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-extrabold text-emerald-400 flex items-center gap-1">
-                      <span>🏠 主胜</span>
-                      <span v-if="simulateResult?.bestChoice === 'HOME_WIN'" class="text-[9px] bg-emerald-500 text-slate-950 px-1 rounded font-black">
-                        BEST
-                      </span>
-                    </span>
-                    <span class="text-[11px] font-mono text-slate-400">
-                      赔率 {{ simulateForm.homeWinOdds }}
-                    </span>
-                  </div>
+            <!-- ================= 视图 A: 🔥 全维度 ROI 综合天梯榜 ================= -->
+            <div v-show="simResultView === 'ALL_ROI'" class="space-y-2.5">
+              <!-- 分类筛选 Chips -->
+              <div class="flex items-center gap-1.5 flex-wrap text-xs">
+                <button
+                  @click="roiFilterType = 'ALL'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition font-bold"
+                  :class="roiFilterType === 'ALL' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  全部 ({{ totalCalculatedCount }})
+                </button>
+                <button
+                  @click="roiFilterType = 'VALUE_ONLY'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition font-bold"
+                  :class="roiFilterType === 'VALUE_ONLY' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  🔥 仅看正期望 ({{ positiveRoiCount }})
+                </button>
+                <button
+                  @click="roiFilterType = 'RESULT'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition"
+                  :class="roiFilterType === 'RESULT' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  🏆 胜平负
+                </button>
+                <button
+                  @click="roiFilterType = 'HANDICAP'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition"
+                  :class="roiFilterType === 'HANDICAP' ? 'bg-sky-500/20 text-sky-300 border-sky-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  🛡️ 让球胜平负 ({{ filledHandicapCount }})
+                </button>
+                <button
+                  @click="roiFilterType = 'GOALS'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition"
+                  :class="roiFilterType === 'GOALS' ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  ⚽ 总进球 ({{ filledGoalsCount }})
+                </button>
+                <button
+                  @click="roiFilterType = 'HALF_FULL'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition"
+                  :class="roiFilterType === 'HALF_FULL' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  🌓 半全场 ({{ filledHalfFullCount }})
+                </button>
+                <button
+                  @click="roiFilterType = 'SCORE'"
+                  class="px-2 py-0.5 rounded-lg border text-[11px] transition"
+                  :class="roiFilterType === 'SCORE' ? 'bg-rose-500/20 text-rose-300 border-rose-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'"
+                >
+                  🎯 比分 ({{ filledScoreCount }})
+                </button>
+              </div>
 
-                  <div class="space-y-1 mb-2.5">
-                    <div class="flex items-baseline justify-between">
-                      <span class="text-[10px] text-slate-400">历史打出率</span>
-                      <span class="text-base font-black font-mono text-emerald-300">
-                        {{ simulateResult?.homeWinProb ?? 0 }}%
-                      </span>
-                    </div>
-                    <!-- 进度条 -->
-                    <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                      <div
-                        class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-                        :style="{ width: `${simulateResult?.homeWinProb || 0}%` }"
-                      ></div>
-                    </div>
-                    <div class="text-[10px] text-slate-500 font-mono text-right">
-                      {{ simulateResult?.homeWinCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
-                    </div>
+              <!-- 全维度 ROI 天梯数据表格 -->
+              <div class="border border-slate-800 rounded-2xl overflow-hidden bg-slate-950/70">
+                <div class="max-h-80 overflow-y-auto">
+                  <table v-if="filteredRoiRankings.length > 0" class="w-full text-xs text-left">
+                    <thead class="text-slate-400 border-b border-slate-800 bg-slate-900/80 sticky top-0 z-10 text-[11px]">
+                      <tr>
+                        <th class="py-2 px-3 text-center w-12">排名</th>
+                        <th class="py-2 px-3">玩法类别</th>
+                        <th class="py-2 px-3">预测选项</th>
+                        <th class="py-2 px-3 text-right">输入赔率</th>
+                        <th class="py-2 px-3 text-center">样本命中</th>
+                        <th class="py-2 px-3 text-right">实际胜率</th>
+                        <th class="py-2 px-3 text-right">期望回报 ROI</th>
+                        <th class="py-2 px-3 text-center">价值评级</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 text-slate-300 text-[11px]">
+                      <tr
+                        v-for="(item, idx) in filteredRoiRankings"
+                        :key="idx"
+                        class="hover:bg-slate-900/60 transition"
+                        :class="item.isValue ? 'bg-emerald-950/15' : ''"
+                      >
+                        <!-- 排名 Badge -->
+                        <td class="py-2 px-3 text-center font-mono">
+                          <span
+                            v-if="idx === 0"
+                            class="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500 text-slate-950"
+                          >
+                            TOP 1
+                          </span>
+                          <span
+                            v-else-if="idx === 1"
+                            class="px-1.5 py-0.5 rounded text-[10px] font-black bg-slate-300 text-slate-950"
+                          >
+                            TOP 2
+                          </span>
+                          <span
+                            v-else-if="idx === 2"
+                            class="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-700 text-white"
+                          >
+                            TOP 3
+                          </span>
+                          <span v-else class="text-slate-500 text-xs">
+                            #{{ idx + 1 }}
+                          </span>
+                        </td>
+
+                        <!-- 玩法类别 -->
+                        <td class="py-2 px-3">
+                          <span
+                            class="px-2 py-0.5 rounded text-[10px] font-bold"
+                            :class="[
+                              item.category === 'RESULT' ? 'bg-cyan-500/20 text-cyan-300' :
+                              (item.category === 'HANDICAP' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' :
+                              (item.category === 'GOALS' ? 'bg-amber-500/20 text-amber-300' :
+                              (item.category === 'HALF_FULL' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-rose-500/20 text-rose-300')))
+                            ]"
+                          >
+                            {{ item.categoryName }}
+                          </span>
+                        </td>
+
+                        <!-- 预测选项 -->
+                        <td class="py-2 px-3 font-bold text-white">
+                          {{ item.optionName }}
+                        </td>
+
+                        <!-- 输入赔率 -->
+                        <td class="py-2 px-3 text-right font-mono font-bold text-slate-200">
+                          {{ Number(item.odds).toFixed(2) }}
+                        </td>
+
+                        <!-- 样本命中 -->
+                        <td class="py-2 px-3 text-center font-mono text-slate-400">
+                          {{ item.hitCount }} / {{ item.sampleCount }}场
+                        </td>
+
+                        <!-- 实际胜率 -->
+                        <td class="py-2 px-3 text-right font-mono text-slate-300">
+                          {{ item.probability }}%
+                        </td>
+
+                        <!-- 期望 ROI -->
+                        <td class="py-2 px-3 text-right font-mono font-black text-xs">
+                          <span
+                            class="px-2 py-0.5 rounded"
+                            :class="[
+                              item.roi > 0
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20'
+                                : 'text-slate-400'
+                            ]"
+                          >
+                            {{ item.roi > 0 ? '+' : '' }}{{ item.roi }}%
+                          </span>
+                        </td>
+
+                        <!-- 价值评级 -->
+                        <td class="py-2 px-3 text-center">
+                          <span
+                            v-if="item.roi > 15"
+                            class="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-500 text-slate-950"
+                          >
+                            🔥 极佳超额
+                          </span>
+                          <span
+                            v-else-if="item.roi > 0"
+                            class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          >
+                            ✨ 正期望
+                          </span>
+                          <span
+                            v-else-if="item.roi >= -5"
+                            class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300"
+                          >
+                            ⚖️ 相对稳健
+                          </span>
+                          <span
+                            v-else
+                            class="px-1.5 py-0.5 rounded text-[10px] bg-slate-900 text-slate-500"
+                          >
+                            ⚠️ 负期望
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- 空状态提示 -->
+                  <div v-else class="p-8 text-center space-y-2">
+                    <span class="text-3xl block">💡</span>
+                    <p class="text-xs text-slate-400">
+                      暂无测算结果。请在左侧输入胜平负、进球数、半全场或比分赔率，或点击左下角【✨ 一键填入全玩法示范赔率】快速查看！
+                    </p>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <!-- ROI 收益率 -->
-                <div class="pt-2 border-t border-slate-800/70 flex items-center justify-between">
-                  <span class="text-[11px] text-slate-400 font-semibold">期望 ROI:</span>
-                  <div class="text-right">
+            <!-- ================= 视图 B: 📊 分类详细看板 ================= -->
+            <div v-show="simResultView === 'CATEGORIES'" class="space-y-3">
+              <!-- 胜平负三大选项概率 & ROI 卡片 -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- 1. 主胜卡片 -->
+                <div
+                  class="p-3.5 rounded-2xl border transition relative overflow-hidden flex flex-col justify-between"
+                  :class="[
+                    simulateResult?.bestChoice === 'HOME_WIN'
+                      ? 'bg-gradient-to-b from-emerald-950/40 to-slate-950/80 border-emerald-500/60 shadow-lg shadow-emerald-500/15'
+                      : 'bg-slate-950/70 border-slate-800/80'
+                  ]"
+                >
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-extrabold text-emerald-400 flex items-center gap-1">
+                        <span>🏠 主胜</span>
+                        <span v-if="simulateResult?.bestChoice === 'HOME_WIN'" class="text-[9px] bg-emerald-500 text-slate-950 px-1 rounded font-black">
+                          BEST
+                        </span>
+                      </span>
+                      <span class="text-[11px] font-mono text-slate-400">
+                        赔率 {{ simulateForm.homeWinOdds }}
+                      </span>
+                    </div>
+
+                    <div class="space-y-1 mb-2.5">
+                      <div class="flex items-baseline justify-between">
+                        <span class="text-[10px] text-slate-400">历史打出率</span>
+                        <span class="text-base font-black font-mono text-emerald-300">
+                          {{ simulateResult?.homeWinProb ?? 0 }}%
+                        </span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                          :style="{ width: `${simulateResult?.homeWinProb || 0}%` }"
+                        ></div>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono text-right">
+                        {{ simulateResult?.homeWinCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pt-2 border-t border-slate-800/70 flex items-center justify-between">
+                    <span class="text-[11px] text-slate-400 font-semibold">期望 ROI:</span>
                     <span
                       class="text-sm font-black font-mono"
-                      :class="[
-                        (simulateResult?.homeWinRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'
-                      ]"
+                      :class="(simulateResult?.homeWinRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'"
                     >
                       {{ (simulateResult?.homeWinRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.homeWinRoi ?? 0 }}%
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <!-- 2. 平局卡片 -->
-              <div
-                class="p-3.5 rounded-2xl border transition relative overflow-hidden flex flex-col justify-between"
-                :class="[
-                  simulateResult?.bestChoice === 'DRAW'
-                    ? 'bg-gradient-to-b from-amber-950/40 to-slate-950/80 border-amber-500/60 shadow-lg shadow-amber-500/15'
-                    : 'bg-slate-950/70 border-slate-800/80'
-                ]"
-              >
-                <div v-if="simulateResult?.bestChoice === 'DRAW'" class="absolute -right-6 -top-6 w-16 h-16 bg-amber-500/20 rounded-full blur-xl pointer-events-none"></div>
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-extrabold text-amber-300 flex items-center gap-1">
-                      <span>🤝 平局</span>
-                      <span v-if="simulateResult?.bestChoice === 'DRAW'" class="text-[9px] bg-amber-400 text-slate-950 px-1 rounded font-black">
-                        BEST
+                <!-- 2. 平局卡片 -->
+                <div
+                  class="p-3.5 rounded-2xl border transition relative overflow-hidden flex flex-col justify-between"
+                  :class="[
+                    simulateResult?.bestChoice === 'DRAW'
+                      ? 'bg-gradient-to-b from-amber-950/40 to-slate-950/80 border-amber-500/60 shadow-lg shadow-amber-500/15'
+                      : 'bg-slate-950/70 border-slate-800/80'
+                  ]"
+                >
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-extrabold text-amber-300 flex items-center gap-1">
+                        <span>🤝 平局</span>
+                        <span v-if="simulateResult?.bestChoice === 'DRAW'" class="text-[9px] bg-amber-400 text-slate-950 px-1 rounded font-black">
+                          BEST
+                        </span>
                       </span>
-                    </span>
-                    <span class="text-[11px] font-mono text-slate-400">
-                      赔率 {{ simulateForm.drawOdds }}
-                    </span>
-                  </div>
-
-                  <div class="space-y-1 mb-2.5">
-                    <div class="flex items-baseline justify-between">
-                      <span class="text-[10px] text-slate-400">历史打出率</span>
-                      <span class="text-base font-black font-mono text-amber-300">
-                        {{ simulateResult?.drawProb ?? 0 }}%
+                      <span class="text-[11px] font-mono text-slate-400">
+                        赔率 {{ simulateForm.drawOdds }}
                       </span>
                     </div>
-                    <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                      <div
-                        class="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500"
-                        :style="{ width: `${simulateResult?.drawProb || 0}%` }"
-                      ></div>
-                    </div>
-                    <div class="text-[10px] text-slate-500 font-mono text-right">
-                      {{ simulateResult?.drawCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+
+                    <div class="space-y-1 mb-2.5">
+                      <div class="flex items-baseline justify-between">
+                        <span class="text-[10px] text-slate-400">历史打出率</span>
+                        <span class="text-base font-black font-mono text-amber-300">
+                          {{ simulateResult?.drawProb ?? 0 }}%
+                        </span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          class="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500"
+                          :style="{ width: `${simulateResult?.drawProb || 0}%` }"
+                        ></div>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono text-right">
+                        {{ simulateResult?.drawCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="pt-2 border-t border-slate-800/70 flex items-center justify-between">
-                  <span class="text-[11px] text-slate-400 font-semibold">期望 ROI:</span>
-                  <div class="text-right">
+                  <div class="pt-2 border-t border-slate-800/70 flex items-center justify-between">
+                    <span class="text-[11px] text-slate-400 font-semibold">期望 ROI:</span>
                     <span
                       class="text-sm font-black font-mono"
-                      :class="[
-                        (simulateResult?.drawRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'
-                      ]"
+                      :class="(simulateResult?.drawRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'"
                     >
                       {{ (simulateResult?.drawRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.drawRoi ?? 0 }}%
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <!-- 3. 客胜卡片 -->
-              <div
-                class="p-3.5 rounded-2xl border transition relative overflow-hidden flex flex-col justify-between"
-                :class="[
-                  simulateResult?.bestChoice === 'AWAY_WIN'
-                    ? 'bg-gradient-to-b from-rose-950/40 to-slate-950/80 border-rose-500/60 shadow-lg shadow-rose-500/15'
-                    : 'bg-slate-950/70 border-slate-800/80'
-                ]"
-              >
-                <div v-if="simulateResult?.bestChoice === 'AWAY_WIN'" class="absolute -right-6 -top-6 w-16 h-16 bg-rose-500/20 rounded-full blur-xl pointer-events-none"></div>
-                <div>
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-extrabold text-rose-400 flex items-center gap-1">
-                      <span>✈️ 客胜</span>
-                      <span v-if="simulateResult?.bestChoice === 'AWAY_WIN'" class="text-[9px] bg-rose-500 text-white px-1 rounded font-black">
-                        BEST
+                <!-- 3. 客胜卡片 -->
+                <div
+                  class="p-3.5 rounded-2xl border transition relative overflow-hidden flex flex-col justify-between"
+                  :class="[
+                    simulateResult?.bestChoice === 'AWAY_WIN'
+                      ? 'bg-gradient-to-b from-rose-950/40 to-slate-950/80 border-rose-500/60 shadow-lg shadow-rose-500/15'
+                      : 'bg-slate-950/70 border-slate-800/80'
+                  ]"
+                >
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-extrabold text-rose-400 flex items-center gap-1">
+                        <span>✈️ 客胜</span>
+                        <span v-if="simulateResult?.bestChoice === 'AWAY_WIN'" class="text-[9px] bg-rose-500 text-white px-1 rounded font-black">
+                          BEST
+                        </span>
                       </span>
-                    </span>
-                    <span class="text-[11px] font-mono text-slate-400">
-                      赔率 {{ simulateForm.awayWinOdds }}
-                    </span>
+                      <span class="text-[11px] font-mono text-slate-400">
+                        赔率 {{ simulateForm.awayWinOdds }}
+                      </span>
+                    </div>
+
+                    <div class="space-y-1 mb-2.5">
+                      <div class="flex items-baseline justify-between">
+                        <span class="text-[10px] text-slate-400">历史打出率</span>
+                        <span class="text-base font-black font-mono text-rose-300">
+                          {{ simulateResult?.awayWinProb ?? 0 }}%
+                        </span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          class="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500"
+                          :style="{ width: `${simulateResult?.awayWinProb || 0}%` }"
+                        ></div>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono text-right">
+                        {{ simulateResult?.awayWinCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+                      </div>
+                    </div>
                   </div>
 
-                  <div class="space-y-1 mb-2.5">
-                    <div class="flex items-baseline justify-between">
-                      <span class="text-[10px] text-slate-400">历史打出率</span>
-                      <span class="text-base font-black font-mono text-rose-300">
-                        {{ simulateResult?.awayWinProb ?? 0 }}%
+                  <div class="pt-2 border-t border-slate-800/70 flex items-center justify-between">
+                    <span class="text-[11px] text-slate-400 font-semibold">期望 ROI:</span>
+                    <span
+                      class="text-sm font-black font-mono"
+                      :class="(simulateResult?.awayWinRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'"
+                    >
+                      {{ (simulateResult?.awayWinRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.awayWinRoi ?? 0 }}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 让球胜平负三大选项概率 & ROI 卡片 (和胜平负一样) -->
+              <div class="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-2.5">
+                <div class="text-[11px] font-extrabold text-sky-300 flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span>🛡️ 让球胜平负测算 ({{ simulateForm.handicapSide === 'HOME' ? '主' : '客' }}{{ simulateForm.handicapValue > 0 ? '+' + simulateForm.handicapValue : simulateForm.handicapValue }})</span>
+                    <span v-if="filledHandicapCount > 0" class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">已测算 ROI</span>
+                    <span v-else class="text-[9px] text-slate-500">可在左侧输入让胜/让平/让负赔率</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono">
+                    让胜 {{ simulateResult?.handicapWinCount ?? 0 }}场 / 让平 {{ simulateResult?.handicapDrawCount ?? 0 }}场 / 让负 {{ simulateResult?.handicapLossCount ?? 0 }}场
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <!-- 1. 让胜卡片 -->
+                  <div
+                    class="p-3 rounded-xl border transition relative overflow-hidden flex flex-col justify-between"
+                    :class="[
+                      (simulateResult?.handicapWinRoi || 0) > 0
+                        ? 'bg-gradient-to-b from-sky-950/40 to-slate-950/80 border-sky-500/60 shadow-lg shadow-sky-500/15'
+                        : 'bg-slate-900/60 border-slate-800/80'
+                    ]"
+                  >
+                    <div>
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-extrabold text-sky-400 flex items-center gap-1">
+                          <span>🛡️ 让胜 (穿盘)</span>
+                          <span v-if="(simulateResult?.handicapWinRoi || 0) > 0" class="text-[9px] bg-sky-500 text-slate-950 px-1 rounded font-black">
+                            VALUE
+                          </span>
+                        </span>
+                        <span class="text-[11px] font-mono text-slate-400">
+                          {{ simulateForm.handicapHomeWinOdds ? `赔率 ${simulateForm.handicapHomeWinOdds}` : '未输赔率' }}
+                        </span>
+                      </div>
+
+                      <div class="space-y-1 mb-2">
+                        <div class="flex items-baseline justify-between">
+                          <span class="text-[10px] text-slate-400">历史打出率</span>
+                          <span class="text-sm font-black font-mono text-sky-300">
+                            {{ simulateResult?.handicapWinProb ?? 0 }}%
+                          </span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            class="h-full bg-gradient-to-r from-sky-500 to-cyan-400 rounded-full transition-all duration-500"
+                            :style="{ width: `${simulateResult?.handicapWinProb || 0}%` }"
+                          ></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono text-right">
+                          {{ simulateResult?.handicapWinCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="pt-1.5 border-t border-slate-800/70 flex items-center justify-between">
+                      <span class="text-[10px] text-slate-400 font-semibold">期望 ROI:</span>
+                      <span
+                        v-if="simulateForm.handicapHomeWinOdds"
+                        class="text-xs font-black font-mono"
+                        :class="(simulateResult?.handicapWinRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'"
+                      >
+                        {{ (simulateResult?.handicapWinRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.handicapWinRoi ?? 0 }}%
                       </span>
+                      <span v-else class="text-[10px] text-slate-500 font-mono">-- (需输入赔率)</span>
                     </div>
-                    <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                      <div
-                        class="h-full bg-gradient-to-r from-rose-500 to-pink-500 rounded-full transition-all duration-500"
-                        :style="{ width: `${simulateResult?.awayWinProb || 0}%` }"
-                      ></div>
+                  </div>
+
+                  <!-- 2. 让平卡片 -->
+                  <div
+                    class="p-3 rounded-xl border transition relative overflow-hidden flex flex-col justify-between"
+                    :class="[
+                      (simulateResult?.handicapDrawRoi || 0) > 0
+                        ? 'bg-gradient-to-b from-indigo-950/40 to-slate-950/80 border-indigo-500/60 shadow-lg shadow-indigo-500/15'
+                        : 'bg-slate-900/60 border-slate-800/80'
+                    ]"
+                  >
+                    <div>
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-extrabold text-indigo-400 flex items-center gap-1">
+                          <span>🤝 让平 (卡盘)</span>
+                          <span v-if="(simulateResult?.handicapDrawRoi || 0) > 0" class="text-[9px] bg-indigo-500 text-slate-950 px-1 rounded font-black">
+                            VALUE
+                          </span>
+                        </span>
+                        <span class="text-[11px] font-mono text-slate-400">
+                          {{ simulateForm.handicapDrawOdds ? `赔率 ${simulateForm.handicapDrawOdds}` : '未输赔率' }}
+                        </span>
+                      </div>
+
+                      <div class="space-y-1 mb-2">
+                        <div class="flex items-baseline justify-between">
+                          <span class="text-[10px] text-slate-400">历史打出率</span>
+                          <span class="text-sm font-black font-mono text-indigo-300">
+                            {{ simulateResult?.handicapDrawProb ?? 0 }}%
+                          </span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            class="h-full bg-gradient-to-r from-indigo-500 to-violet-400 rounded-full transition-all duration-500"
+                            :style="{ width: `${simulateResult?.handicapDrawProb || 0}%` }"
+                          ></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono text-right">
+                          {{ simulateResult?.handicapDrawCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+                        </div>
+                      </div>
                     </div>
-                    <div class="text-[10px] text-slate-500 font-mono text-right">
-                      {{ simulateResult?.awayWinCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+
+                    <div class="pt-1.5 border-t border-slate-800/70 flex items-center justify-between">
+                      <span class="text-[10px] text-slate-400 font-semibold">期望 ROI:</span>
+                      <span
+                        v-if="simulateForm.handicapDrawOdds"
+                        class="text-xs font-black font-mono"
+                        :class="(simulateResult?.handicapDrawRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'"
+                      >
+                        {{ (simulateResult?.handicapDrawRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.handicapDrawRoi ?? 0 }}%
+                      </span>
+                      <span v-else class="text-[10px] text-slate-500 font-mono">-- (需输入赔率)</span>
+                    </div>
+                  </div>
+
+                  <!-- 3. 让负卡片 -->
+                  <div
+                    class="p-3 rounded-xl border transition relative overflow-hidden flex flex-col justify-between"
+                    :class="[
+                      (simulateResult?.handicapLossRoi || 0) > 0
+                        ? 'bg-gradient-to-b from-purple-950/40 to-slate-950/80 border-purple-500/60 shadow-lg shadow-purple-500/15'
+                        : 'bg-slate-900/60 border-slate-800/80'
+                    ]"
+                  >
+                    <div>
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-extrabold text-purple-400 flex items-center gap-1">
+                          <span>🛡️ 让负 (下盘)</span>
+                          <span v-if="(simulateResult?.handicapLossRoi || 0) > 0" class="text-[9px] bg-purple-500 text-slate-950 px-1 rounded font-black">
+                            VALUE
+                          </span>
+                        </span>
+                        <span class="text-[11px] font-mono text-slate-400">
+                          {{ simulateForm.handicapAwayWinOdds ? `赔率 ${simulateForm.handicapAwayWinOdds}` : '未输赔率' }}
+                        </span>
+                      </div>
+
+                      <div class="space-y-1 mb-2">
+                        <div class="flex items-baseline justify-between">
+                          <span class="text-[10px] text-slate-400">历史打出率</span>
+                          <span class="text-sm font-black font-mono text-purple-300">
+                            {{ simulateResult?.handicapLossProb ?? 0 }}%
+                          </span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            class="h-full bg-gradient-to-r from-purple-500 to-fuchsia-400 rounded-full transition-all duration-500"
+                            :style="{ width: `${simulateResult?.handicapLossProb || 0}%` }"
+                          ></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono text-right">
+                          {{ simulateResult?.handicapLossCount ?? 0 }} 场 / {{ simulateResult?.sampleCount ?? 0 }} 场
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="pt-1.5 border-t border-slate-800/70 flex items-center justify-between">
+                      <span class="text-[10px] text-slate-400 font-semibold">期望 ROI:</span>
+                      <span
+                        v-if="simulateForm.handicapAwayWinOdds"
+                        class="text-xs font-black font-mono"
+                        :class="(simulateResult?.handicapLossRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'"
+                      >
+                        {{ (simulateResult?.handicapLossRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.handicapLossRoi ?? 0 }}%
+                      </span>
+                      <span v-else class="text-[10px] text-slate-500 font-mono">-- (需输入赔率)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 进球数与半全场 ROI 快捷列表 (若有输入) -->
+              <div v-if="simulateResult?.goalsRoiList?.length || simulateResult?.halfFullRoiList?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <!-- 进球数 ROI 榜 -->
+                <div v-if="simulateResult?.goalsRoiList?.length" class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
+                  <div class="font-bold text-amber-300 flex items-center justify-between text-[11px]">
+                    <span>⚽ 总进球 ROI</span>
+                    <span class="text-[10px] text-slate-500">按期望回报排序</span>
+                  </div>
+                  <div class="space-y-1">
+                    <div
+                      v-for="item in simulateResult.goalsRoiList"
+                      :key="item.optionKey"
+                      class="flex items-center justify-between p-1.5 rounded-lg bg-slate-900 text-[11px]"
+                    >
+                      <span class="font-bold text-amber-300">{{ item.optionName }} (赔率 {{ item.odds }})</span>
+                      <span class="text-slate-400 font-mono">{{ item.hitCount }}场 ({{ item.probability }}%)</span>
+                      <span
+                        class="font-mono font-black"
+                        :class="item.roi > 0 ? 'text-emerald-400' : 'text-slate-400'"
+                      >
+                        {{ item.roi > 0 ? '+' : '' }}{{ item.roi }}%
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div class="pt-2 border-t border-slate-800/70 flex items-center justify-between">
-                  <span class="text-[11px] text-slate-400 font-semibold">期望 ROI:</span>
-                  <div class="text-right">
-                    <span
-                      class="text-sm font-black font-mono"
-                      :class="[
-                        (simulateResult?.awayWinRoi || 0) > 0 ? 'text-emerald-400' : 'text-slate-300'
-                      ]"
+                <!-- 半全场 ROI 榜 -->
+                <div v-if="simulateResult?.halfFullRoiList?.length" class="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
+                  <div class="font-bold text-indigo-300 flex items-center justify-between text-[11px]">
+                    <span>🌓 半全场 ROI</span>
+                    <span class="text-[10px] text-slate-500">按期望回报排序</span>
+                  </div>
+                  <div class="space-y-1">
+                    <div
+                      v-for="item in simulateResult.halfFullRoiList"
+                      :key="item.optionKey"
+                      class="flex items-center justify-between p-1.5 rounded-lg bg-slate-900 text-[11px]"
                     >
-                      {{ (simulateResult?.awayWinRoi || 0) > 0 ? '+' : '' }}{{ simulateResult?.awayWinRoi ?? 0 }}%
-                    </span>
+                      <span class="font-bold text-indigo-300">{{ item.optionName }} (赔率 {{ item.odds }})</span>
+                      <span class="text-slate-400 font-mono">{{ item.hitCount }}场 ({{ item.probability }}%)</span>
+                      <span
+                        class="font-mono font-black"
+                        :class="item.roi > 0 ? 'text-emerald-400' : 'text-slate-400'"
+                      >
+                        {{ item.roi > 0 ? '+' : '' }}{{ item.roi }}%
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1619,8 +2368,58 @@ const sideOptions = [
   { label: '仅客让球', value: 'AWAY' }
 ]
 
-// 3. 赛制类型筛选 (维度 2: 联赛 / 杯赛淘汰赛 / 友谊热身赛)
-const systemFilter = ref('ALL') // ALL, LEAGUE, CUP, FRIENDLY
+// 3. 联赛名称筛选 (去重查出所有已录入联赛作为选项)
+const leagueFilter = ref('ALL')
+const serverLeagues = ref([])
+
+// 动态去重计算：提取当前所有比赛和后端返回的不重复联赛名称，实时响应录入
+const distinctLeagues = computed(() => {
+  const set = new Set()
+  if (Array.isArray(matches.value)) {
+    matches.value.forEach(m => {
+      if (m && m.leagueName && m.leagueName.trim()) {
+        set.add(m.leagueName.trim())
+      }
+    })
+  }
+  if (Array.isArray(serverLeagues.value)) {
+    serverLeagues.value.forEach(l => {
+      if (l && l.trim()) set.add(l.trim())
+    })
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+})
+
+// 计算出现场次最多的前5个联赛，生成快捷标签
+const topLeagues = computed(() => {
+  const countMap = {}
+  if (Array.isArray(matches.value)) {
+    matches.value.forEach(m => {
+      if (m && m.leagueName && m.leagueName.trim()) {
+        const ln = m.leagueName.trim()
+        countMap[ln] = (countMap[ln] || 0) + 1
+      }
+    })
+  }
+  return Object.entries(countMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(entry => entry[0])
+})
+
+const loadDistinctLeagues = async () => {
+  try {
+    const res = await api.getHandicapMatchLeagues()
+    if (res && res.data && Array.isArray(res.data)) {
+      serverLeagues.value = res.data
+    }
+  } catch (err) {
+    console.warn('获取联赛列表失败:', err)
+  }
+}
+
+// 赛制备用选项
+const systemFilter = ref('ALL')
 const systemOptions = [
   { label: '全部赛制', value: 'ALL', icon: '🌐' },
   { label: '联赛积分制', value: 'LEAGUE', icon: '🏆' },
@@ -1661,16 +2460,95 @@ const isEditMode = ref(false)
 const deducedHint = ref('')
 
 // 单场测算表单与结果状态
+const simInputTab = ref('BASE') // 'BASE' | 'GOALS' | 'HALFFULL' | 'SCORE'
+const simResultView = ref('ALL_ROI') // 'ALL_ROI' | 'CATEGORIES'
+const roiFilterType = ref('ALL') // 'ALL' | 'VALUE_ONLY' | 'RESULT' | 'GOALS' | 'HALF_FULL' | 'SCORE'
+const customScoreInput = ref('')
+const customOddsInput = ref(null)
+
 const simulateForm = ref({
+  leagueName: 'ALL',
   matchSystem: 'LEAGUE',
   handicapSide: 'HOME',
   handicapValue: -1.0,
   homeWinOdds: 1.55,
   drawOdds: 3.80,
   awayWinOdds: 5.20,
-  tolerance: 0.10
+  handicapHomeWinOdds: null,
+  handicapDrawOdds: null,
+  handicapAwayWinOdds: null,
+  tolerance: 0.10,
+  goalsOdds: {
+    '0': null,
+    '1': null,
+    '2': null,
+    '3': null,
+    '4': null,
+    '5': null,
+    '6': null,
+    '7+': null
+  },
+  halfFullOdds: {
+    '胜胜': null,
+    '胜平': null,
+    '胜负': null,
+    '平胜': null,
+    '平平': null,
+    '平负': null,
+    '负胜': null,
+    '负平': null,
+    '负负': null
+  },
+  scoreOddsList: [
+    { score: '1:0', odds: null },
+    { score: '2:0', odds: null },
+    { score: '2:1', odds: null },
+    { score: '3:0', odds: null },
+    { score: '3:1', odds: null },
+    { score: '0:0', odds: null },
+    { score: '1:1', odds: null },
+    { score: '2:2', odds: null },
+    { score: '0:1', odds: null },
+    { score: '0:2', odds: null },
+    { score: '1:2', odds: null }
+  ]
 })
 const simulateResult = ref(null)
+
+const filledHandicapCount = computed(() => {
+  let c = 0
+  if (simulateForm.value.handicapHomeWinOdds && Number(simulateForm.value.handicapHomeWinOdds) > 1.0) c++
+  if (simulateForm.value.handicapDrawOdds && Number(simulateForm.value.handicapDrawOdds) > 1.0) c++
+  if (simulateForm.value.handicapAwayWinOdds && Number(simulateForm.value.handicapAwayWinOdds) > 1.0) c++
+  return c
+})
+
+const filledGoalsCount = computed(() => {
+  return Object.values(simulateForm.value.goalsOdds || {}).filter(v => v && Number(v) > 1.0).length
+})
+
+const filledHalfFullCount = computed(() => {
+  return Object.values(simulateForm.value.halfFullOdds || {}).filter(v => v && Number(v) > 1.0).length
+})
+
+const filledScoreCount = computed(() => {
+  return (simulateForm.value.scoreOddsList || []).filter(item => item.odds && Number(item.odds) > 1.0).length
+})
+
+const totalCalculatedCount = computed(() => {
+  return simulateResult.value?.allRoiRankings?.length || 0
+})
+
+const positiveRoiCount = computed(() => {
+  return (simulateResult.value?.allRoiRankings || []).filter(i => i.isValue).length
+})
+
+const filteredRoiRankings = computed(() => {
+  const list = simulateResult.value?.allRoiRankings || []
+  if (roiFilterType.value === 'ALL') return list
+  if (roiFilterType.value === 'VALUE_ONLY') return list.filter(i => i.isValue)
+  return list.filter(i => i.category === roiFilterType.value)
+})
 
 const simSystemOptions = [
   { label: '全部', value: 'ALL' },
@@ -1771,6 +2649,7 @@ const fetchMatchList = async () => {
     const res = await api.getHandicapMatchRecords({})
     const list = res.data || res || []
     matches.value = Array.isArray(list) ? list : []
+    loadDistinctLeagues()
     nextTick(() => {
       updateCharts()
     })
@@ -1791,23 +2670,9 @@ const filteredMatches = computed(() => {
     list = list.filter(m => m.handicapSide === sideFilter.value)
   }
 
-  // 2. 赛制类型筛选 (LEAGUE/CUP/FRIENDLY/ALL)
-  if (systemFilter.value !== 'ALL') {
-    list = list.filter(m => {
-      let sys = m.matchSystem
-      if (!sys) {
-        // 兼容未填赛制的历史数据，按联赛名称智能推断
-        const ln = m.leagueName || ''
-        if (ln.includes('杯') || ln.includes('冠') || ln.includes('欧联') || ln.includes('淘汰') || ln.includes('锦标')) {
-          sys = 'CUP'
-        } else if (ln.includes('友谊') || ln.includes('热身')) {
-          sys = 'FRIENDLY'
-        } else {
-          sys = 'LEAGUE'
-        }
-      }
-      return sys === systemFilter.value
-    })
+  // 2. 联赛名称筛选 (去重查出选项)
+  if (leagueFilter.value && leagueFilter.value !== 'ALL') {
+    list = list.filter(m => m.leagueName && m.leagueName.trim() === leagueFilter.value.trim())
   }
 
   // 3. 时间跨度筛选 (全部 / 最近1个月 / 最近3个月 / 自定义)
@@ -2496,6 +3361,141 @@ const applySimPreset = (p) => {
   runSimulation()
 }
 
+const getMatchedSampleRecords = () => {
+  const f = simulateForm.value
+  const targetOdds = f.handicapSide === 'HOME'
+    ? Number(f.homeWinOdds || 1.50)
+    : Number(f.awayWinOdds || 1.50)
+  const tol = Number(f.tolerance || 0.10)
+  const minOdds = targetOdds - tol
+  const maxOdds = targetOdds + tol
+
+  return (matches.value || []).filter(m => {
+    if (f.handicapSide && m.handicapSide !== f.handicapSide) return false
+    if (f.leagueName && f.leagueName !== 'ALL' && m.leagueName !== f.leagueName) return false
+    if (f.matchSystem && f.matchSystem !== 'ALL' && m.matchSystem !== f.matchSystem) return false
+    const o = Number(m.handicapOdds)
+    if (isNaN(o) || o < minOdds - 0.0001 || o > maxOdds + 0.0001) return false
+    return true
+  })
+}
+
+const addCustomScore = () => {
+  if (!customScoreInput.value || !customScoreInput.value.trim()) {
+    ElMessage.warning('请输入比分，如 2:1 或 1-0')
+    return
+  }
+  const norm = customScoreInput.value.trim().replace('-', ':').replace('：', ':')
+  const odds = customOddsInput.value ? Number(customOddsInput.value) : null
+  const exists = simulateForm.value.scoreOddsList.find(item => item.score.trim() === norm)
+  if (exists) {
+    exists.odds = odds
+  } else {
+    simulateForm.value.scoreOddsList.unshift({ score: norm, odds })
+  }
+  customScoreInput.value = ''
+  customOddsInput.value = null
+  runSimulation()
+}
+
+const removeScore = (idx) => {
+  simulateForm.value.scoreOddsList.splice(idx, 1)
+  runSimulation()
+}
+
+const fillSampleHighFreqScores = () => {
+  const matched = getMatchedSampleRecords()
+  const scoreCountMap = {}
+  matched.forEach(m => {
+    if (m.fullScore) {
+      const norm = m.fullScore.trim().replace('-', ':').replace('：', ':')
+      scoreCountMap[norm] = (scoreCountMap[norm] || 0) + 1
+    }
+  })
+  const sortedScores = Object.entries(scoreCountMap)
+    .sort((a, b) => b[1] - a[1])
+    .map(([score]) => score)
+
+  if (sortedScores.length === 0) {
+    ElMessage.info('当前匹配样本暂无比分记录')
+    return
+  }
+  let addedCount = 0
+  sortedScores.forEach(sc => {
+    if (!simulateForm.value.scoreOddsList.some(item => item.score.trim() === sc)) {
+      simulateForm.value.scoreOddsList.push({ score: sc, odds: null })
+      addedCount++
+    }
+  })
+  runSimulation()
+  ElMessage.success(`已载入 ${sortedScores.length} 个历史样本高发比分`)
+}
+
+const fillDemoOdds = () => {
+  simulateForm.value.handicapHomeWinOdds = 2.45
+  simulateForm.value.handicapDrawOdds = 3.50
+  simulateForm.value.handicapAwayWinOdds = 2.30
+  simulateForm.value.goalsOdds = {
+    '0': 9.50,
+    '1': 4.20,
+    '2': 3.40,
+    '3': 3.80,
+    '4': 5.50,
+    '5': 10.00,
+    '6': 18.00,
+    '7+': 28.00
+  }
+  simulateForm.value.halfFullOdds = {
+    '胜胜': 2.30,
+    '胜平': 14.00,
+    '胜负': 28.00,
+    '平胜': 4.20,
+    '平平': 5.80,
+    '平负': 12.00,
+    '负胜': 22.00,
+    '负平': 14.00,
+    '负负': 8.50
+  }
+  simulateForm.value.scoreOddsList = [
+    { score: '1:0', odds: 6.50 },
+    { score: '2:0', odds: 7.00 },
+    { score: '2:1', odds: 8.00 },
+    { score: '3:0', odds: 11.00 },
+    { score: '3:1', odds: 13.00 },
+    { score: '0:0', odds: 9.00 },
+    { score: '1:1', odds: 6.50 },
+    { score: '2:2', odds: 14.00 },
+    { score: '0:1', odds: 12.00 },
+    { score: '1:2', odds: 15.00 }
+  ]
+  runSimulation()
+  ElMessage.success('已填入让球胜平负、进球数、半全场与比分示范参考赔率！')
+}
+
+const clearExtraOdds = () => {
+  simulateForm.value.handicapHomeWinOdds = null
+  simulateForm.value.handicapDrawOdds = null
+  simulateForm.value.handicapAwayWinOdds = null
+  Object.keys(simulateForm.value.goalsOdds).forEach(k => {
+    simulateForm.value.goalsOdds[k] = null
+  })
+  Object.keys(simulateForm.value.halfFullOdds).forEach(k => {
+    simulateForm.value.halfFullOdds[k] = null
+  })
+  simulateForm.value.scoreOddsList.forEach(item => {
+    item.odds = null
+  })
+  runSimulation()
+  ElMessage.info('已清空让球、进球、半全场与比分赔率输入')
+}
+
+const getScoreHits = (score) => {
+  if (!score) return 0
+  const norm = score.trim().replace('-', ':').replace('：', ':')
+  const matched = getMatchedSampleRecords()
+  return matched.filter(m => m.fullScore && m.fullScore.trim().replace('-', ':').replace('：', ':') === norm).length
+}
+
 const computeLocalSimulation = () => {
   const f = simulateForm.value
   const targetOdds = f.handicapSide === 'HOME'
@@ -2505,25 +3505,9 @@ const computeLocalSimulation = () => {
   const minOdds = targetOdds - tol
   const maxOdds = targetOdds + tol
 
-  // 从 matches.value 匹配
-  const matched = (matches.value || []).filter(m => {
-    // 匹配让球方
-    if (f.handicapSide && m.handicapSide !== f.handicapSide) {
-      return false
-    }
-    // 匹配赛制
-    if (f.matchSystem && f.matchSystem !== 'ALL' && m.matchSystem !== f.matchSystem) {
-      return false
-    }
-    // 匹配赔率区间
-    const o = Number(m.handicapOdds)
-    if (isNaN(o) || o < minOdds - 0.0001 || o > maxOdds + 0.0001) {
-      return false
-    }
-    return true
-  })
-
+  const matched = getMatchedSampleRecords()
   const sampleCount = matched.length
+
   if (sampleCount === 0) {
     simulateResult.value = {
       sampleCount: 0,
@@ -2541,12 +3525,26 @@ const computeLocalSimulation = () => {
       homeWinRoi: 0,
       drawRoi: 0,
       awayWinRoi: 0,
+      handicapWinProb: 0,
+      handicapDrawProb: 0,
+      handicapLossProb: 0,
+      handicapWinCount: 0,
+      handicapDrawCount: 0,
+      handicapLossCount: 0,
+      handicapWinRoi: 0,
+      handicapDrawRoi: 0,
+      handicapLossRoi: 0,
       bestChoice: 'NONE',
       bestChoiceName: '暂无样本',
       maxRoi: 0,
       advice: `当前赔率区间 [${minOdds.toFixed(2)} ~ ${maxOdds.toFixed(2)}] 库内暂无样本，建议调大步幅容差或录入历史比赛。`,
       goalsDistribution: {},
       halfFullDistribution: {},
+      allRoiRankings: [],
+      handicapRoiList: [],
+      goalsRoiList: [],
+      halfFullRoiList: [],
+      scoreRoiList: [],
       sampleMatches: []
     }
     return
@@ -2556,6 +3554,9 @@ const computeLocalSimulation = () => {
   let dr = 0
   let aw = 0
   let brk = 0
+  let hWin = 0
+  let hDraw = 0
+  let hLoss = 0
   const goalsMap = {}
   const halfFullMap = {}
 
@@ -2565,6 +3566,30 @@ const computeLocalSimulation = () => {
     else if (m.matchResult === 'AWAY_WIN') aw++
 
     if (m.isBreak) brk++
+
+    // 让球胜平负统计
+    let hr = m.handicapResult
+    if (!hr || !hr.trim()) {
+      if (m.isBreak) {
+        hr = 'WIN'
+      } else if (m.fullScore && m.fullScore.includes(':')) {
+        try {
+          const parts = m.fullScore.split(':')
+          const hg = parseInt(parts[0].trim())
+          const ag = parseInt(parts[1].trim())
+          const hVal = m.handicapValue != null ? Number(m.handicapValue) : -1.0
+          const diff = (m.handicapSide || 'HOME').toUpperCase() === 'HOME'
+            ? (hg - ag) + hVal
+            : (ag - hg) + hVal
+          if (diff > 0.001) hr = 'WIN'
+          else if (Math.abs(diff) <= 0.001) hr = 'DRAW'
+          else hr = 'LOSS'
+        } catch (e) {}
+      }
+    }
+    if (hr === 'WIN') hWin++
+    else if (hr === 'DRAW') hDraw++
+    else if (hr === 'LOSS') hLoss++
 
     if (m.totalGoals !== null && m.totalGoals !== undefined) {
       const g = `${m.totalGoals}球`
@@ -2581,14 +3606,27 @@ const computeLocalSimulation = () => {
   const awProb = Number(((aw / sampleCount) * 100).toFixed(2))
   const brkProb = Number(((brk / sampleCount) * 100).toFixed(2))
 
+  const hWinProb = Number(((hWin / sampleCount) * 100).toFixed(2))
+  const hDrawProb = Number(((hDraw / sampleCount) * 100).toFixed(2))
+  const hLossProb = Number(((hLoss / sampleCount) * 100).toFixed(2))
+
   const hOdds = Number(f.homeWinOdds || 1.50)
   const dOdds = Number(f.drawOdds || 3.50)
   const aOdds = Number(f.awayWinOdds || 5.00)
 
-  // ROI = (P * odds - 1) * 100
+  // 胜平负 ROI
   const hwRoi = Number((((hw / sampleCount) * hOdds - 1) * 100).toFixed(2))
   const drRoi = Number((((dr / sampleCount) * dOdds - 1) * 100).toFixed(2))
   const awRoi = Number((((aw / sampleCount) * aOdds - 1) * 100).toFixed(2))
+
+  // 让球胜平负 ROI
+  const hhOdds = Number(f.handicapHomeWinOdds || 0)
+  const hdOdds = Number(f.handicapDrawOdds || 0)
+  const haOdds = Number(f.handicapAwayWinOdds || 0)
+
+  const hWinRoi = hhOdds > 0 ? Number((((hWin / sampleCount) * hhOdds - 1) * 100).toFixed(2)) : 0
+  const hDrawRoi = hdOdds > 0 ? Number((((hDraw / sampleCount) * hdOdds - 1) * 100).toFixed(2)) : 0
+  const hLossRoi = haOdds > 0 ? Number((((hLoss / sampleCount) * haOdds - 1) * 100).toFixed(2)) : 0
 
   let bestChoice = 'HOME_WIN'
   let bestChoiceName = '主胜'
@@ -2605,12 +3643,157 @@ const computeLocalSimulation = () => {
     bestChoiceName = '客胜'
   }
 
+  // ==================== 全维度玩法 ROI 计算 (胜平负、让球、进球数、半全场、比分) ====================
+  const allRoiRankings = []
+
+  // 1. 胜平负
+  if (hOdds > 0) {
+    allRoiRankings.push({
+      category: 'RESULT', categoryName: '胜平负', optionKey: 'HOME_WIN', optionName: '主胜',
+      odds: hOdds, hitCount: hw, sampleCount, probability: hwProb, roi: hwRoi, isValue: hwRoi > 0
+    })
+  }
+  if (dOdds > 0) {
+    allRoiRankings.push({
+      category: 'RESULT', categoryName: '胜平负', optionKey: 'DRAW', optionName: '平局',
+      odds: dOdds, hitCount: dr, sampleCount, probability: drProb, roi: drRoi, isValue: drRoi > 0
+    })
+  }
+  if (aOdds > 0) {
+    allRoiRankings.push({
+      category: 'RESULT', categoryName: '胜平负', optionKey: 'AWAY_WIN', optionName: '客胜',
+      odds: aOdds, hitCount: aw, sampleCount, probability: awProb, roi: awRoi, isValue: awRoi > 0
+    })
+  }
+
+  // 2. 让球胜平负
+  const handicapRoiList = []
+  if (hhOdds > 0) {
+    const item = {
+      category: 'HANDICAP', categoryName: '让球胜平负', optionKey: 'HANDICAP_WIN', optionName: '让胜',
+      odds: hhOdds, hitCount: hWin, sampleCount, probability: hWinProb, roi: hWinRoi, isValue: hWinRoi > 0
+    }
+    handicapRoiList.push(item)
+    allRoiRankings.push(item)
+  }
+  if (hdOdds > 0) {
+    const item = {
+      category: 'HANDICAP', categoryName: '让球胜平负', optionKey: 'HANDICAP_DRAW', optionName: '让平',
+      odds: hdOdds, hitCount: hDraw, sampleCount, probability: hDrawProb, roi: hDrawRoi, isValue: hDrawRoi > 0
+    }
+    handicapRoiList.push(item)
+    allRoiRankings.push(item)
+  }
+  if (haOdds > 0) {
+    const item = {
+      category: 'HANDICAP', categoryName: '让球胜平负', optionKey: 'HANDICAP_LOSS', optionName: '让负',
+      odds: haOdds, hitCount: hLoss, sampleCount, probability: hLossProb, roi: hLossRoi, isValue: hLossRoi > 0
+    }
+    handicapRoiList.push(item)
+    allRoiRankings.push(item)
+  }
+  handicapRoiList.sort((a, b) => b.roi - a.roi)
+
+  // 3. 进球数 ROI
+  const goalsRoiList = []
+  if (f.goalsOdds) {
+    const goalKeys = ['0', '1', '2', '3', '4', '5', '6', '7+']
+    goalKeys.forEach(gKey => {
+      const o = f.goalsOdds[gKey]
+      if (o && Number(o) > 1.0) {
+        const isSevenPlus = gKey.startsWith('7') || gKey.includes('7+')
+        const targetNum = !isSevenPlus ? parseInt(gKey) : -1
+        let hit = 0
+        matched.forEach(m => {
+          if (m.totalGoals == null) return
+          if (isSevenPlus) {
+            if (Number(m.totalGoals) >= 7) hit++
+          } else if (Number(m.totalGoals) === targetNum) {
+            hit++
+          }
+        })
+        const prob = Number(((hit / sampleCount) * 100).toFixed(2))
+        const roi = Number((((hit / sampleCount) * Number(o) - 1) * 100).toFixed(2))
+        const item = {
+          category: 'GOALS', categoryName: '总进球', optionKey: gKey,
+          optionName: isSevenPlus ? '7+球' : `${gKey}球`,
+          odds: Number(o), hitCount: hit, sampleCount, probability: prob, roi, isValue: roi > 0
+        }
+        goalsRoiList.push(item)
+        allRoiRankings.push(item)
+      }
+    })
+    goalsRoiList.sort((a, b) => b.roi - a.roi)
+  }
+
+  // 4. 半全场 ROI
+  const halfFullRoiList = []
+  if (f.halfFullOdds) {
+    const hfKeys = ['胜胜', '胜平', '胜负', '平胜', '平平', '平负', '负胜', '负平', '负负']
+    hfKeys.forEach(hfKey => {
+      const o = f.halfFullOdds[hfKey]
+      if (o && Number(o) > 1.0) {
+        let hit = 0
+        matched.forEach(m => {
+          if (m.halfFullResult && m.halfFullResult.trim() === hfKey.trim()) {
+            hit++
+          }
+        })
+        const prob = Number(((hit / sampleCount) * 100).toFixed(2))
+        const roi = Number((((hit / sampleCount) * Number(o) - 1) * 100).toFixed(2))
+        const item = {
+          category: 'HALF_FULL', categoryName: '半全场', optionKey: hfKey, optionName: hfKey,
+          odds: Number(o), hitCount: hit, sampleCount, probability: prob, roi, isValue: roi > 0
+        }
+        halfFullRoiList.push(item)
+        allRoiRankings.push(item)
+      }
+    })
+    halfFullRoiList.sort((a, b) => b.roi - a.roi)
+  }
+
+  // 5. 比分 ROI
+  const scoreRoiList = []
+  if (f.scoreOddsList && f.scoreOddsList.length > 0) {
+    f.scoreOddsList.forEach(sItem => {
+      if (sItem.score && sItem.odds && Number(sItem.odds) > 1.0) {
+        const norm = sItem.score.trim().replace('-', ':').replace('：', ':')
+        let hit = 0
+        matched.forEach(m => {
+          if (m.fullScore) {
+            const rNorm = m.fullScore.trim().replace('-', ':').replace('：', ':')
+            if (rNorm === norm) hit++
+          }
+        })
+        const prob = Number(((hit / sampleCount) * 100).toFixed(2))
+        const roi = Number((((hit / sampleCount) * Number(sItem.odds) - 1) * 100).toFixed(2))
+        const item = {
+          category: 'SCORE', categoryName: '比分', optionKey: sItem.score, optionName: norm,
+          odds: Number(sItem.odds), hitCount: hit, sampleCount, probability: prob, roi, isValue: roi > 0
+        }
+        scoreRoiList.push(item)
+        allRoiRankings.push(item)
+      }
+    })
+    scoreRoiList.sort((a, b) => b.roi - a.roi)
+  }
+
+  // 天梯总排序
+  allRoiRankings.sort((a, b) => b.roi - a.roi)
+
   let advice = ''
   if (maxRoi > 0) {
-    advice = `🔥 【高价值发现】历史样本中【${bestChoiceName}】期望回报率(ROI)为 +${maxRoi}%，存在超额正向数学期望（Value Bet）！`
+    advice = `🔥 【高价值发现】胜平负历史样本中【${bestChoiceName}】期望回报率(ROI)为 +${maxRoi}%，存在超额正向数学期望（Value Bet）！`
   } else {
-    advice = `⚠️ 【负期望规避】当前胜平负三项期望回报率均为负（受庄家抽水与实际胜率影响），其中【${bestChoiceName}】相对损耗最低 (ROI: ${maxRoi}%)。`
+    advice = `⚠️ 【负期望规避】胜平负三项期望回报率均为负，其中【${bestChoiceName}】相对损耗最低 (ROI: ${maxRoi}%)。`
   }
+
+  // 跨玩法最佳价值点提示
+  const topVal = allRoiRankings.find(i => i.isValue)
+  if (topVal) {
+    advice += ` 🌟【跨玩法最佳价值点】：【${topVal.categoryName} · ${topVal.optionName}】期望ROI达 +${topVal.roi}% (打出率 ${topVal.probability}%)！`
+  }
+
   advice += ` 历史样本开奖分布：主胜 ${hwProb}%，平局 ${drProb}%，客胜 ${awProb}%。`
   if (brkProb >= 50) {
     advice += ` 穿盘率达 ${brkProb}%，让球方打穿能力显著，可优先参考让球胜盘口。`
@@ -2632,12 +3815,26 @@ const computeLocalSimulation = () => {
     homeWinRoi: hwRoi,
     drawRoi: drRoi,
     awayWinRoi: awRoi,
+    handicapWinProb: hWinProb,
+    handicapDrawProb: hDrawProb,
+    handicapLossProb: hLossProb,
+    handicapWinCount: hWin,
+    handicapDrawCount: hDraw,
+    handicapLossCount: hLoss,
+    handicapWinRoi: hWinRoi,
+    handicapDrawRoi: hDrawRoi,
+    handicapLossRoi: hLossRoi,
     bestChoice,
     bestChoiceName,
     maxRoi,
     advice,
     goalsDistribution: goalsMap,
     halfFullDistribution: halfFullMap,
+    allRoiRankings,
+    handicapRoiList,
+    goalsRoiList,
+    halfFullRoiList,
+    scoreRoiList,
     sampleMatches: matched.slice(0, 20).map(m => ({
       id: m.id,
       matchDate: m.matchDate,
@@ -2660,14 +3857,36 @@ const runSimulation = async () => {
   // 随后调用后端接口
   simulateLoading.value = true
   try {
+    const goalsOddsMap = {}
+    Object.entries(simulateForm.value.goalsOdds || {}).forEach(([k, v]) => {
+      if (v && Number(v) > 1.0) goalsOddsMap[k] = Number(v)
+    })
+    const halfFullOddsMap = {}
+    Object.entries(simulateForm.value.halfFullOdds || {}).forEach(([k, v]) => {
+      if (v && Number(v) > 1.0) halfFullOddsMap[k] = Number(v)
+    })
+    const scoreOddsMap = {}
+    ;(simulateForm.value.scoreOddsList || []).forEach(item => {
+      if (item.score && item.odds && Number(item.odds) > 1.0) {
+        scoreOddsMap[item.score.trim()] = Number(item.odds)
+      }
+    })
+
     const payload = {
+      leagueName: simulateForm.value.leagueName || 'ALL',
       matchSystem: simulateForm.value.matchSystem,
       handicapSide: simulateForm.value.handicapSide,
       handicapValue: Number(simulateForm.value.handicapValue || -1.0),
       homeWinOdds: Number(simulateForm.value.homeWinOdds || 1.50),
       drawOdds: Number(simulateForm.value.drawOdds || 3.50),
       awayWinOdds: Number(simulateForm.value.awayWinOdds || 5.00),
-      tolerance: Number(simulateForm.value.tolerance || 0.10)
+      handicapHomeWinOdds: simulateForm.value.handicapHomeWinOdds ? Number(simulateForm.value.handicapHomeWinOdds) : null,
+      handicapDrawOdds: simulateForm.value.handicapDrawOdds ? Number(simulateForm.value.handicapDrawOdds) : null,
+      handicapAwayWinOdds: simulateForm.value.handicapAwayWinOdds ? Number(simulateForm.value.handicapAwayWinOdds) : null,
+      tolerance: Number(simulateForm.value.tolerance || 0.10),
+      goalsOdds: goalsOddsMap,
+      halfFullOdds: halfFullOddsMap,
+      scoreOdds: scoreOddsMap
     }
     const res = await api.simulateHandicapMatch(payload)
     if (res && res.data) {
@@ -2688,6 +3907,7 @@ const handleResize = () => {
 
 onMounted(() => {
   fetchMatchList()
+  loadDistinctLeagues()
   window.addEventListener('resize', handleResize)
 })
 
@@ -2698,7 +3918,7 @@ onBeforeUnmount(() => {
 })
 
 // 监听4大维度变化自适应更新图表
-watch([steppedBuckets, filteredMatches, sideFilter, systemFilter, timePreset, dateRange], () => {
+watch([steppedBuckets, filteredMatches, sideFilter, leagueFilter, timePreset, dateRange], () => {
   nextTick(() => {
     updateCharts()
   })

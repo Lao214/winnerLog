@@ -113,6 +113,118 @@ public class HandicapMatchSimulationVO {
     @Schema(description = "匹配到的历史样本比赛明细列表")
     private List<MatchedSampleItemVO> sampleMatches;
 
+    @Schema(description = "全维度玩法综合ROI天梯排名列表 (按ROI从高到低排列)")
+    private List<RoiItemVO> allRoiRankings;
+
+    @Schema(description = "总进球数玩法选项ROI列表")
+    private List<RoiItemVO> goalsRoiList;
+
+    @Schema(description = "半全场玩法选项ROI列表")
+    private List<RoiItemVO> halfFullRoiList;
+
+    @Schema(description = "输入的让球主胜 (让胜) 赔率", example = "2.45")
+    private BigDecimal inputHandicapHomeWinOdds;
+
+    @Schema(description = "输入的让球平局 (让平) 赔率", example = "3.50")
+    private BigDecimal inputHandicapDrawOdds;
+
+    @Schema(description = "输入的让球客胜 (让负) 赔率", example = "2.30")
+    private BigDecimal inputHandicapAwayWinOdds;
+
+    @Schema(description = "让胜打出概率(%)", example = "42.86")
+    private BigDecimal handicapWinProb;
+
+    @Schema(description = "让平打出概率(%)", example = "28.57")
+    private BigDecimal handicapDrawProb;
+
+    @Schema(description = "让负打出概率(%)", example = "28.57")
+    private BigDecimal handicapLossProb;
+
+    @Schema(description = "让胜场次", example = "6")
+    private Integer handicapWinCount;
+
+    @Schema(description = "让平场次", example = "4")
+    private Integer handicapDrawCount;
+
+    @Schema(description = "让负场次", example = "4")
+    private Integer handicapLossCount;
+
+    @Schema(description = "让胜期望ROI(%)", example = "5.01")
+    private BigDecimal handicapWinRoi;
+
+    @Schema(description = "让平期望ROI(%)", example = "-0.01")
+    private BigDecimal handicapDrawRoi;
+
+    @Schema(description = "让负期望ROI(%)", example = "-34.29")
+    private BigDecimal handicapLossRoi;
+
+    @Schema(description = "让球胜平负玩法选项ROI列表")
+    private List<RoiItemVO> handicapRoiList;
+
+    @Schema(description = "准确比分玩法选项ROI列表")
+    private List<RoiItemVO> scoreRoiList;
+
+
+    public static class RoiItemVO {
+        private String category;
+        private String categoryName;
+        private String optionKey;
+        private String optionName;
+        private BigDecimal odds;
+        private Integer hitCount;
+        private Integer sampleCount;
+        private BigDecimal probability;
+        private BigDecimal roi;
+        private Boolean isValue;
+
+        public RoiItemVO() {}
+
+        public RoiItemVO(String category, String categoryName, String optionKey, String optionName,
+                         BigDecimal odds, Integer hitCount, Integer sampleCount,
+                         BigDecimal probability, BigDecimal roi, Boolean isValue) {
+            this.category = category;
+            this.categoryName = categoryName;
+            this.optionKey = optionKey;
+            this.optionName = optionName;
+            this.odds = odds;
+            this.hitCount = hitCount;
+            this.sampleCount = sampleCount;
+            this.probability = probability;
+            this.roi = roi;
+            this.isValue = isValue;
+        }
+
+        public String getCategory() { return category; }
+        public void setCategory(String category) { this.category = category; }
+
+        public String getCategoryName() { return categoryName; }
+        public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+
+        public String getOptionKey() { return optionKey; }
+        public void setOptionKey(String optionKey) { this.optionKey = optionKey; }
+
+        public String getOptionName() { return optionName; }
+        public void setOptionName(String optionName) { this.optionName = optionName; }
+
+        public BigDecimal getOdds() { return odds; }
+        public void setOdds(BigDecimal odds) { this.odds = odds; }
+
+        public Integer getHitCount() { return hitCount; }
+        public void setHitCount(Integer hitCount) { this.hitCount = hitCount; }
+
+        public Integer getSampleCount() { return sampleCount; }
+        public void setSampleCount(Integer sampleCount) { this.sampleCount = sampleCount; }
+
+        public BigDecimal getProbability() { return probability; }
+        public void setProbability(BigDecimal probability) { this.probability = probability; }
+
+        public BigDecimal getRoi() { return roi; }
+        public void setRoi(BigDecimal roi) { this.roi = roi; }
+
+        public Boolean getIsValue() { return isValue; }
+        public void setIsValue(Boolean isValue) { this.isValue = isValue; }
+    }
+
     public static class MatchedSampleItemVO {
         private Long id;
         private String matchDate;
@@ -499,4 +611,141 @@ public class HandicapMatchSimulationVO {
     public void setSampleMatches(List<MatchedSampleItemVO> sampleMatches) {
         this.sampleMatches = sampleMatches;
     }
+
+    public List<RoiItemVO> getAllRoiRankings() {
+        return allRoiRankings;
+    }
+
+    public void setAllRoiRankings(List<RoiItemVO> allRoiRankings) {
+        this.allRoiRankings = allRoiRankings;
+    }
+
+    public List<RoiItemVO> getGoalsRoiList() {
+        return goalsRoiList;
+    }
+
+    public void setGoalsRoiList(List<RoiItemVO> goalsRoiList) {
+        this.goalsRoiList = goalsRoiList;
+    }
+
+    public List<RoiItemVO> getHalfFullRoiList() {
+        return halfFullRoiList;
+    }
+
+    public void setHalfFullRoiList(List<RoiItemVO> halfFullRoiList) {
+        this.halfFullRoiList = halfFullRoiList;
+    }
+
+    public List<RoiItemVO> getScoreRoiList() {
+        return scoreRoiList;
+    }
+
+    public void setScoreRoiList(List<RoiItemVO> scoreRoiList) {
+        this.scoreRoiList = scoreRoiList;
+    }
+
+    public BigDecimal getInputHandicapHomeWinOdds() {
+        return inputHandicapHomeWinOdds;
+    }
+
+    public void setInputHandicapHomeWinOdds(BigDecimal inputHandicapHomeWinOdds) {
+        this.inputHandicapHomeWinOdds = inputHandicapHomeWinOdds;
+    }
+
+    public BigDecimal getInputHandicapDrawOdds() {
+        return inputHandicapDrawOdds;
+    }
+
+    public void setInputHandicapDrawOdds(BigDecimal inputHandicapDrawOdds) {
+        this.inputHandicapDrawOdds = inputHandicapDrawOdds;
+    }
+
+    public BigDecimal getInputHandicapAwayWinOdds() {
+        return inputHandicapAwayWinOdds;
+    }
+
+    public void setInputHandicapAwayWinOdds(BigDecimal inputHandicapAwayWinOdds) {
+        this.inputHandicapAwayWinOdds = inputHandicapAwayWinOdds;
+    }
+
+    public BigDecimal getHandicapWinProb() {
+        return handicapWinProb;
+    }
+
+    public void setHandicapWinProb(BigDecimal handicapWinProb) {
+        this.handicapWinProb = handicapWinProb;
+    }
+
+    public BigDecimal getHandicapDrawProb() {
+        return handicapDrawProb;
+    }
+
+    public void setHandicapDrawProb(BigDecimal handicapDrawProb) {
+        this.handicapDrawProb = handicapDrawProb;
+    }
+
+    public BigDecimal getHandicapLossProb() {
+        return handicapLossProb;
+    }
+
+    public void setHandicapLossProb(BigDecimal handicapLossProb) {
+        this.handicapLossProb = handicapLossProb;
+    }
+
+    public Integer getHandicapWinCount() {
+        return handicapWinCount;
+    }
+
+    public void setHandicapWinCount(Integer handicapWinCount) {
+        this.handicapWinCount = handicapWinCount;
+    }
+
+    public Integer getHandicapDrawCount() {
+        return handicapDrawCount;
+    }
+
+    public void setHandicapDrawCount(Integer handicapDrawCount) {
+        this.handicapDrawCount = handicapDrawCount;
+    }
+
+    public Integer getHandicapLossCount() {
+        return handicapLossCount;
+    }
+
+    public void setHandicapLossCount(Integer handicapLossCount) {
+        this.handicapLossCount = handicapLossCount;
+    }
+
+    public BigDecimal getHandicapWinRoi() {
+        return handicapWinRoi;
+    }
+
+    public void setHandicapWinRoi(BigDecimal handicapWinRoi) {
+        this.handicapWinRoi = handicapWinRoi;
+    }
+
+    public BigDecimal getHandicapDrawRoi() {
+        return handicapDrawRoi;
+    }
+
+    public void setHandicapDrawRoi(BigDecimal handicapDrawRoi) {
+        this.handicapDrawRoi = handicapDrawRoi;
+    }
+
+    public BigDecimal getHandicapLossRoi() {
+        return handicapLossRoi;
+    }
+
+    public void setHandicapLossRoi(BigDecimal handicapLossRoi) {
+        this.handicapLossRoi = handicapLossRoi;
+    }
+
+    public List<RoiItemVO> getHandicapRoiList() {
+        return handicapRoiList;
+    }
+
+    public void setHandicapRoiList(List<RoiItemVO> handicapRoiList) {
+        this.handicapRoiList = handicapRoiList;
+    }
 }
+

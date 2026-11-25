@@ -55,70 +55,55 @@
         </div>
       </div>
 
-      <!-- 第二行：联赛分类筛选 + 赛制类型 + 时间预设 -->
+      <!-- 第二行：联赛名称筛选 (去重查出作为选项) + 时间跨度预设 -->
       <div class="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
-        <!-- 联赛选择器 -->
+        <!-- 联赛选择器 (去重查出作为选项) -->
         <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="text-slate-400 font-semibold">主流联赛:</span>
+          <span class="text-slate-400 font-semibold">联赛:</span>
           <div class="inline-flex p-0.5 rounded-xl bg-slate-950/80 border border-slate-800 flex-wrap">
             <button
-              v-for="l in quickLeagueFilters"
-              :key="l.value"
-              @click="leagueFilter = l.value"
-              class="px-2.5 py-1 rounded-lg transition text-xs font-medium"
+              @click="leagueFilter = 'ALL'"
+              class="px-2.5 py-1 rounded-lg transition text-xs font-semibold"
               :class="[
-                leagueFilter === l.value
+                leagueFilter === 'ALL'
                   ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
                   : 'text-slate-400 hover:text-white'
               ]"
             >
-              {{ l.label }}
+              全部联赛
             </button>
-          </div>
-          <!-- 自由选择其他更多联赛 -->
-          <el-select
-            v-model="leagueFilter"
-            placeholder="更多联赛"
-            size="small"
-            filterable
-            class="!w-32 custom-select"
-          >
-            <el-option label="全部联赛" value="ALL" />
-            <el-option-group
-              v-for="group in categorizedLeagues"
-              :key="group.label"
-              :label="group.label"
-            >
-              <el-option
-                v-for="item in group.options"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-option-group>
-          </el-select>
-        </div>
-
-        <!-- 赛制类型 (全部 / 联赛 / 杯赛 / 友谊赛) -->
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="text-slate-400 font-semibold">赛制:</span>
-          <div class="inline-flex p-0.5 rounded-xl bg-slate-950/80 border border-slate-800">
             <button
-              v-for="sys in systemOptions"
-              :key="sys.value"
-              @click="systemFilter = sys.value"
-              class="px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1"
+              v-for="leg in topLeagues"
+              :key="leg"
+              @click="leagueFilter = leg"
+              class="px-2.5 py-1 rounded-lg transition text-xs font-medium"
               :class="[
-                systemFilter === sys.value
-                  ? 'bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30'
+                leagueFilter === leg
+                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
                   : 'text-slate-400 hover:text-white'
               ]"
             >
-              <span>{{ sys.icon }}</span>
-              <span>{{ sys.label }}</span>
+              {{ leg }}
             </button>
           </div>
+          <!-- 自由选择其他去重后的全部联赛 -->
+          <el-select
+            v-model="leagueFilter"
+            placeholder="筛选或搜索联赛"
+            size="small"
+            filterable
+            class="!w-36 custom-select"
+          >
+            <el-option label="全部联赛 (ALL)" value="ALL" />
+            <el-option
+              v-for="leg in distinctLeagues"
+              :key="leg"
+              :label="leg"
+              :value="leg"
+            />
+          </el-select>
         </div>
+
 
         <!-- 时间跨度预设 -->
         <div class="flex items-center gap-1.5 flex-wrap">
@@ -1487,6 +1472,55 @@ const systemFilter = ref('ALL')
 const timePreset = ref('ALL')
 const dateRange = ref([])
 
+const serverLeagues = ref([])
+
+const loadDistinctLeagues = async () => {
+  try {
+    const res = await api.getExtremeGoalsOddsLeagues()
+    if (res && res.data && Array.isArray(res.data)) {
+      serverLeagues.value = res.data
+    }
+  } catch (err) {
+    console.warn('获取极值赔率联赛列表失败:', err)
+  }
+}
+
+// 动态去重查出已录入的所有联赛名称
+const distinctLeagues = computed(() => {
+  const set = new Set()
+  if (Array.isArray(allRecords.value)) {
+    allRecords.value.forEach(r => {
+      if (r && r.leagueName && r.leagueName.trim()) set.add(r.leagueName.trim())
+    })
+  }
+  if (Array.isArray(serverLeagues.value)) {
+    serverLeagues.value.forEach(l => {
+      if (l && l.trim()) set.add(l.trim())
+    })
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+})
+
+// 计算出现场次最多的前6个联赛作为快捷药丸
+const topLeagues = computed(() => {
+  const countMap = {}
+  if (Array.isArray(allRecords.value)) {
+    allRecords.value.forEach(r => {
+      if (r && r.leagueName && r.leagueName.trim()) {
+        const ln = r.leagueName.trim()
+        countMap[ln] = (countMap[ln] || 0) + 1
+      }
+    })
+  }
+  const topFromRecords = Object.entries(countMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(e => e[0])
+  if (topFromRecords.length > 0) return topFromRecords
+  return distinctLeagues.value.slice(0, 6)
+})
+
+
 // 数据与分页
 const allRecords = ref([])
 const loading = ref(false)
@@ -2318,6 +2352,7 @@ const saveRecord = async () => {
     }
     recordModalVisible.value = false
     fetchData()
+    loadDistinctLeagues()
   } catch (err) {
     ElMessage.error('保存失败: ' + (err.message || '系统异常'))
   }
@@ -2333,6 +2368,7 @@ const deleteRecord = async (id) => {
     await api.deleteExtremeGoalsOdds(id)
     ElMessage.success('删除成功！')
     fetchData()
+    loadDistinctLeagues()
   } catch (err) {
     if (err !== 'cancel') {
       ElMessage.error('删除失败: ' + (err.message || '系统异常'))
@@ -2350,6 +2386,7 @@ const batchDeleteRecords = async () => {
     ElMessage.success('批量删除成功！')
     selectedIds.value = []
     fetchData()
+    loadDistinctLeagues()
   } catch (err) {
     if (err !== 'cancel') {
       ElMessage.error('批量删除失败: ' + (err.message || '系统异常'))
@@ -2404,6 +2441,7 @@ const saveBatchRecords = async () => {
     ElMessage.success(`成功批量录入 ${valid.length} 场两极进球赔率数据！`)
     batchModalVisible.value = false
     fetchData()
+    loadDistinctLeagues()
   } catch (err) {
     ElMessage.error('批量录入失败: ' + (err.message || '系统异常'))
   }
@@ -2512,6 +2550,7 @@ const handleResize = () => {
 
 onMounted(() => {
   fetchData()
+  loadDistinctLeagues()
   window.addEventListener('resize', handleResize)
 })
 

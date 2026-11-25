@@ -134,6 +134,11 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         }
     }
 
+    @Override
+    public List<String> getDistinctLeagueNames() {
+        return repository.findDistinctLeagueNames();
+    }
+
     private void copyProperties(HandicapMatchRecordRequest src, HandicapMatchRecord target) {
         target.setMatchDate(src.getMatchDate());
         target.setBatchTitle(src.getBatchTitle());
@@ -230,6 +235,11 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
             if (!"ALL".equalsIgnoreCase(matchSystem)) {
                 predicates.add(cb.equal(root.get("matchSystem"), matchSystem));
             }
+            // 匹配联赛 (如果非 ALL)
+            String leagueName = request.getLeagueName();
+            if (leagueName != null && !leagueName.trim().isEmpty() && !"ALL".equalsIgnoreCase(leagueName.trim())) {
+                predicates.add(cb.equal(root.get("leagueName"), leagueName.trim()));
+            }
             // 匹配赔率区间 [minOdds, maxOdds]
             predicates.add(cb.between(root.get("handicapOdds"), minOdds, maxOdds));
 
@@ -250,6 +260,9 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         vo.setInputHomeWinOdds(request.getHomeWinOdds());
         vo.setInputDrawOdds(request.getDrawOdds());
         vo.setInputAwayWinOdds(request.getAwayWinOdds());
+        vo.setInputHandicapHomeWinOdds(request.getHandicapHomeWinOdds());
+        vo.setInputHandicapDrawOdds(request.getHandicapDrawOdds());
+        vo.setInputHandicapAwayWinOdds(request.getHandicapAwayWinOdds());
         vo.setOddsRangeDesc(String.format("%.2f ~ %.2f (基准让球胜赔 %.2f ± %.2f)", minOdds, maxOdds, targetOdds, tolerance));
 
         int sampleCount = matchedRecords.size();
@@ -267,14 +280,26 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
             vo.setHomeWinRoi(BigDecimal.ZERO);
             vo.setDrawRoi(BigDecimal.ZERO);
             vo.setAwayWinRoi(BigDecimal.ZERO);
+            vo.setHandicapWinProb(BigDecimal.ZERO);
+            vo.setHandicapDrawProb(BigDecimal.ZERO);
+            vo.setHandicapLossProb(BigDecimal.ZERO);
+            vo.setHandicapWinCount(0);
+            vo.setHandicapDrawCount(0);
+            vo.setHandicapLossCount(0);
+            vo.setHandicapWinRoi(BigDecimal.ZERO);
+            vo.setHandicapDrawRoi(BigDecimal.ZERO);
+            vo.setHandicapLossRoi(BigDecimal.ZERO);
             vo.setBestChoice("NONE");
             vo.setBestChoiceName("暂无样本");
             vo.setMaxRoi(BigDecimal.ZERO);
             vo.setAdvice("库内当前在赔率 " + minOdds + " ~ " + maxOdds + " (" + vo.getMatchSystemDesc() + "·" + vo.getHandicapSideDesc() + ") 下暂无样本。建议调大容差步幅（如设为0.15或0.20），或录入历史比赛数据。");
             vo.setRiskLevel("HIGH");
             vo.setGoalsDistribution(Collections.emptyMap());
-            vo.setHalfFullDistribution(Collections.emptyMap());
-            vo.setSampleMatches(Collections.emptyList());
+            vo.setAllRoiRankings(Collections.emptyList());
+            vo.setHandicapRoiList(Collections.emptyList());
+            vo.setGoalsRoiList(Collections.emptyList());
+            vo.setHalfFullRoiList(Collections.emptyList());
+            vo.setScoreRoiList(Collections.emptyList());
             return vo;
         }
 
@@ -282,6 +307,10 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         int draw = 0;
         int awayWin = 0;
         int breakCount = 0;
+        int hWin = 0;
+        int hDraw = 0;
+        int hLoss = 0;
+
 
         Map<String, Long> goalsMap = new HashMap<>();
         Map<String, Long> halfFullMap = new HashMap<>();
@@ -298,6 +327,33 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
             if (Boolean.TRUE.equals(r.getIsBreak())) {
                 breakCount++;
             }
+
+            // 统计让球结果 (WIN/DRAW/LOSS)
+            String hr = r.getHandicapResult();
+            if (hr == null || hr.trim().isEmpty()) {
+                if (Boolean.TRUE.equals(r.getIsBreak())) {
+                    hr = "WIN";
+                } else if (r.getFullScore() != null && r.getFullScore().contains(":")) {
+                    try {
+                        String[] parts = r.getFullScore().split(":");
+                        int hg = Integer.parseInt(parts[0].trim());
+                        int ag = Integer.parseInt(parts[1].trim());
+                        double hVal = r.getHandicapValue() != null ? r.getHandicapValue().doubleValue() : -1.0;
+                        double diff = "HOME".equalsIgnoreCase(r.getHandicapSide()) ? (hg - ag) + hVal : (ag - hg) + hVal;
+                        if (diff > 0.001) hr = "WIN";
+                        else if (Math.abs(diff) <= 0.001) hr = "DRAW";
+                        else hr = "LOSS";
+                    } catch (Exception ignored) {}
+                }
+            }
+            if ("WIN".equalsIgnoreCase(hr)) {
+                hWin++;
+            } else if ("DRAW".equalsIgnoreCase(hr)) {
+                hDraw++;
+            } else if ("LOSS".equalsIgnoreCase(hr)) {
+                hLoss++;
+            }
+
             if (r.getTotalGoals() != null) {
                 String gKey = r.getTotalGoals() + "球";
                 goalsMap.put(gKey, goalsMap.getOrDefault(gKey, 0L) + 1);
@@ -319,12 +375,23 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         BigDecimal awayWinProb = new BigDecimal(awayWin).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
         BigDecimal breakProb = new BigDecimal(breakCount).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
 
+        BigDecimal hWinProb = new BigDecimal(hWin).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
+        BigDecimal hDrawProb = new BigDecimal(hDraw).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
+        BigDecimal hLossProb = new BigDecimal(hLoss).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
+
         vo.setHomeWinProb(homeWinProb);
         vo.setDrawProb(drawProb);
         vo.setAwayWinProb(awayWinProb);
         vo.setBreakProb(breakProb);
 
-        // 计算期望 ROI: ROI = (P * odds - 1) * 100%
+        vo.setHandicapWinCount(hWin);
+        vo.setHandicapDrawCount(hDraw);
+        vo.setHandicapLossCount(hLoss);
+        vo.setHandicapWinProb(hWinProb);
+        vo.setHandicapDrawProb(hDrawProb);
+        vo.setHandicapLossProb(hLossProb);
+
+        // 计算胜平负期望 ROI: ROI = (P * odds - 1) * 100%
         BigDecimal homeRoi = BigDecimal.ZERO;
         if (request.getHomeWinOdds() != null && request.getHomeWinOdds().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal p = new BigDecimal(homeWin).divide(n, 4, RoundingMode.HALF_UP);
@@ -346,7 +413,29 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         }
         vo.setAwayWinRoi(awayRoi);
 
-        // 决策最优选项
+        // 计算让球胜平负期望 ROI
+        BigDecimal hWinRoi = BigDecimal.ZERO;
+        if (request.getHandicapHomeWinOdds() != null && request.getHandicapHomeWinOdds().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal p = new BigDecimal(hWin).divide(n, 4, RoundingMode.HALF_UP);
+            hWinRoi = p.multiply(request.getHandicapHomeWinOdds()).subtract(BigDecimal.ONE).multiply(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP);
+        }
+        vo.setHandicapWinRoi(hWinRoi);
+
+        BigDecimal hDrawRoi = BigDecimal.ZERO;
+        if (request.getHandicapDrawOdds() != null && request.getHandicapDrawOdds().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal p = new BigDecimal(hDraw).divide(n, 4, RoundingMode.HALF_UP);
+            hDrawRoi = p.multiply(request.getHandicapDrawOdds()).subtract(BigDecimal.ONE).multiply(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP);
+        }
+        vo.setHandicapDrawRoi(hDrawRoi);
+
+        BigDecimal hLossRoi = BigDecimal.ZERO;
+        if (request.getHandicapAwayWinOdds() != null && request.getHandicapAwayWinOdds().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal p = new BigDecimal(hLoss).divide(n, 4, RoundingMode.HALF_UP);
+            hLossRoi = p.multiply(request.getHandicapAwayWinOdds()).subtract(BigDecimal.ONE).multiply(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP);
+        }
+        vo.setHandicapLossRoi(hLossRoi);
+
+        // 决策最优选项 (胜平负)
         String bestChoice = "HOME_WIN";
         String bestChoiceName = "主胜";
         BigDecimal maxRoi = homeRoi;
@@ -366,6 +455,165 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         vo.setBestChoiceName(bestChoiceName);
         vo.setMaxRoi(maxRoi);
 
+        // ==================== 多维度玩法 ROI 计算 (让球胜平负、进球数、半全场、比分) ====================
+        List<HandicapMatchSimulationVO.RoiItemVO> allRoiRankings = new ArrayList<>();
+
+        // 1. 胜平负项加入天梯
+        if (request.getHomeWinOdds() != null && request.getHomeWinOdds().compareTo(BigDecimal.ZERO) > 0) {
+            allRoiRankings.add(new HandicapMatchSimulationVO.RoiItemVO(
+                    "RESULT", "胜平负", "HOME_WIN", "主胜",
+                    request.getHomeWinOdds(), homeWin, sampleCount, homeWinProb, homeRoi, homeRoi.compareTo(BigDecimal.ZERO) > 0
+            ));
+        }
+        if (request.getDrawOdds() != null && request.getDrawOdds().compareTo(BigDecimal.ZERO) > 0) {
+            allRoiRankings.add(new HandicapMatchSimulationVO.RoiItemVO(
+                    "RESULT", "胜平负", "DRAW", "平局",
+                    request.getDrawOdds(), draw, sampleCount, drawProb, drawRoi, drawRoi.compareTo(BigDecimal.ZERO) > 0
+            ));
+        }
+        if (request.getAwayWinOdds() != null && request.getAwayWinOdds().compareTo(BigDecimal.ZERO) > 0) {
+            allRoiRankings.add(new HandicapMatchSimulationVO.RoiItemVO(
+                    "RESULT", "胜平负", "AWAY_WIN", "客胜",
+                    request.getAwayWinOdds(), awayWin, sampleCount, awayWinProb, awayRoi, awayRoi.compareTo(BigDecimal.ZERO) > 0
+            ));
+        }
+
+        // 2. 让球胜平负项加入天梯
+        List<HandicapMatchSimulationVO.RoiItemVO> handicapRoiList = new ArrayList<>();
+        if (request.getHandicapHomeWinOdds() != null && request.getHandicapHomeWinOdds().compareTo(BigDecimal.ZERO) > 0) {
+            HandicapMatchSimulationVO.RoiItemVO item = new HandicapMatchSimulationVO.RoiItemVO(
+                    "HANDICAP", "让球胜平负", "HANDICAP_WIN", "让胜",
+                    request.getHandicapHomeWinOdds(), hWin, sampleCount, hWinProb, hWinRoi, hWinRoi.compareTo(BigDecimal.ZERO) > 0
+            );
+            handicapRoiList.add(item);
+            allRoiRankings.add(item);
+        }
+        if (request.getHandicapDrawOdds() != null && request.getHandicapDrawOdds().compareTo(BigDecimal.ZERO) > 0) {
+            HandicapMatchSimulationVO.RoiItemVO item = new HandicapMatchSimulationVO.RoiItemVO(
+                    "HANDICAP", "让球胜平负", "HANDICAP_DRAW", "让平",
+                    request.getHandicapDrawOdds(), hDraw, sampleCount, hDrawProb, hDrawRoi, hDrawRoi.compareTo(BigDecimal.ZERO) > 0
+            );
+            handicapRoiList.add(item);
+            allRoiRankings.add(item);
+        }
+        if (request.getHandicapAwayWinOdds() != null && request.getHandicapAwayWinOdds().compareTo(BigDecimal.ZERO) > 0) {
+            HandicapMatchSimulationVO.RoiItemVO item = new HandicapMatchSimulationVO.RoiItemVO(
+                    "HANDICAP", "让球胜平负", "HANDICAP_LOSS", "让负",
+                    request.getHandicapAwayWinOdds(), hLoss, sampleCount, hLossProb, hLossRoi, hLossRoi.compareTo(BigDecimal.ZERO) > 0
+            );
+            handicapRoiList.add(item);
+            allRoiRankings.add(item);
+        }
+        vo.setHandicapRoiList(handicapRoiList);
+
+
+        // 2. 进球数 ROI 测算
+        List<HandicapMatchSimulationVO.RoiItemVO> goalsRoiList = new ArrayList<>();
+        if (request.getGoalsOdds() != null && !request.getGoalsOdds().isEmpty()) {
+            for (Map.Entry<String, BigDecimal> entry : request.getGoalsOdds().entrySet()) {
+                String gKey = entry.getKey() != null ? entry.getKey().trim() : "";
+                BigDecimal odds = entry.getValue();
+                if (gKey.isEmpty() || odds == null || odds.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                int hit = 0;
+                boolean isSevenPlus = gKey.startsWith("7") || gKey.contains("7+");
+                int targetGoalNum = -1;
+                if (!isSevenPlus) {
+                    try {
+                        targetGoalNum = Integer.parseInt(gKey.replace("球", "").trim());
+                    } catch (NumberFormatException ignored) {}
+                }
+
+                for (HandicapMatchRecord r : matchedRecords) {
+                    if (r.getTotalGoals() == null) continue;
+                    if (isSevenPlus) {
+                        if (r.getTotalGoals() >= 7) hit++;
+                    } else if (targetGoalNum >= 0) {
+                        if (r.getTotalGoals() == targetGoalNum) hit++;
+                    }
+                }
+
+                BigDecimal prob = new BigDecimal(hit).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
+                BigDecimal p = new BigDecimal(hit).divide(n, 4, RoundingMode.HALF_UP);
+                BigDecimal roi = p.multiply(odds).subtract(BigDecimal.ONE).multiply(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP);
+                String displayName = isSevenPlus ? "7+球" : (targetGoalNum >= 0 ? targetGoalNum + "球" : gKey);
+
+                HandicapMatchSimulationVO.RoiItemVO item = new HandicapMatchSimulationVO.RoiItemVO(
+                        "GOALS", "总进球", gKey, displayName, odds, hit, sampleCount, prob, roi, roi.compareTo(BigDecimal.ZERO) > 0
+                );
+                goalsRoiList.add(item);
+                allRoiRankings.add(item);
+            }
+            goalsRoiList.sort((a, b) -> b.getRoi().compareTo(a.getRoi()));
+        }
+        vo.setGoalsRoiList(goalsRoiList);
+
+        // 3. 半全场 ROI 测算
+        List<HandicapMatchSimulationVO.RoiItemVO> halfFullRoiList = new ArrayList<>();
+        if (request.getHalfFullOdds() != null && !request.getHalfFullOdds().isEmpty()) {
+            for (Map.Entry<String, BigDecimal> entry : request.getHalfFullOdds().entrySet()) {
+                String hfKey = entry.getKey() != null ? entry.getKey().trim() : "";
+                BigDecimal odds = entry.getValue();
+                if (hfKey.isEmpty() || odds == null || odds.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                int hit = 0;
+                for (HandicapMatchRecord r : matchedRecords) {
+                    if (r.getHalfFullResult() != null && r.getHalfFullResult().trim().equals(hfKey)) {
+                        hit++;
+                    }
+                }
+
+                BigDecimal prob = new BigDecimal(hit).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
+                BigDecimal p = new BigDecimal(hit).divide(n, 4, RoundingMode.HALF_UP);
+                BigDecimal roi = p.multiply(odds).subtract(BigDecimal.ONE).multiply(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP);
+
+                HandicapMatchSimulationVO.RoiItemVO item = new HandicapMatchSimulationVO.RoiItemVO(
+                        "HALF_FULL", "半全场", hfKey, hfKey, odds, hit, sampleCount, prob, roi, roi.compareTo(BigDecimal.ZERO) > 0
+                );
+                halfFullRoiList.add(item);
+                allRoiRankings.add(item);
+            }
+            halfFullRoiList.sort((a, b) -> b.getRoi().compareTo(a.getRoi()));
+        }
+        vo.setHalfFullRoiList(halfFullRoiList);
+
+        // 4. 比分 ROI 测算
+        List<HandicapMatchSimulationVO.RoiItemVO> scoreRoiList = new ArrayList<>();
+        if (request.getScoreOdds() != null && !request.getScoreOdds().isEmpty()) {
+            for (Map.Entry<String, BigDecimal> entry : request.getScoreOdds().entrySet()) {
+                String rawScore = entry.getKey() != null ? entry.getKey().trim() : "";
+                BigDecimal odds = entry.getValue();
+                if (rawScore.isEmpty() || odds == null || odds.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                String normKey = rawScore.replace("-", ":").replace("：", ":");
+                int hit = 0;
+                for (HandicapMatchRecord r : matchedRecords) {
+                    if (r.getFullScore() != null) {
+                        String rNorm = r.getFullScore().trim().replace("-", ":").replace("：", ":");
+                        if (rNorm.equals(normKey)) {
+                            hit++;
+                        }
+                    }
+                }
+
+                BigDecimal prob = new BigDecimal(hit).multiply(new BigDecimal(100)).divide(n, 2, RoundingMode.HALF_UP);
+                BigDecimal p = new BigDecimal(hit).divide(n, 4, RoundingMode.HALF_UP);
+                BigDecimal roi = p.multiply(odds).subtract(BigDecimal.ONE).multiply(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP);
+
+                HandicapMatchSimulationVO.RoiItemVO item = new HandicapMatchSimulationVO.RoiItemVO(
+                        "SCORE", "比分", rawScore, normKey, odds, hit, sampleCount, prob, roi, roi.compareTo(BigDecimal.ZERO) > 0
+                );
+                scoreRoiList.add(item);
+                allRoiRankings.add(item);
+            }
+            scoreRoiList.sort((a, b) -> b.getRoi().compareTo(a.getRoi()));
+        }
+        vo.setScoreRoiList(scoreRoiList);
+
+        // 综合排序全天梯榜单
+        allRoiRankings.sort((a, b) -> b.getRoi().compareTo(a.getRoi()));
+        vo.setAllRoiRankings(allRoiRankings);
+
         // 评定风险等级
         if (sampleCount >= 10) {
             vo.setRiskLevel("LOW");
@@ -378,12 +626,23 @@ public class HandicapMatchRecordServiceImpl implements HandicapMatchRecordServic
         // 生成策略建议
         StringBuilder sb = new StringBuilder();
         if (maxRoi.compareTo(BigDecimal.ZERO) > 0) {
-            sb.append("🔥 【高价值发现】历史样本中【").append(bestChoiceName).append("】期望回报率(ROI)为 +")
+            sb.append("🔥 【高价值发现】胜平负历史样本中【").append(bestChoiceName).append("】期望回报率(ROI)为 +")
               .append(maxRoi).append("%，存在超额正向数学期望（Value Bet）！");
         } else {
-            sb.append("⚠️ 【负期望规避】当前胜平负三项期望回报率均为负（受庄家抽水与实际胜率影响），其中【")
+            sb.append("⚠️ 【负期望规避】胜平负三项期望回报率均为负，其中【")
               .append(bestChoiceName).append("】相对损耗最低 (ROI: ").append(maxRoi).append("%)。");
         }
+
+        // 若进球/半全场/比分中发现了更高的正期望超额选项，额外提示
+        Optional<HandicapMatchSimulationVO.RoiItemVO> topValueBet = allRoiRankings.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getIsValue()))
+                .findFirst();
+        if (topValueBet.isPresent()) {
+            HandicapMatchSimulationVO.RoiItemVO tv = topValueBet.get();
+            sb.append(" 🌟【跨玩法最佳价值点】：【").append(tv.getCategoryName()).append(" · ").append(tv.getOptionName())
+              .append("】期望ROI达 +").append(tv.getRoi()).append("% (打出率 ").append(tv.getProbability()).append("%)！");
+        }
+
         sb.append(" 历史样本开奖分布：主胜 ").append(homeWinProb).append("%，平局 ")
           .append(drawProb).append("%，客胜 ").append(awayWinProb).append("%。");
         if (breakProb.compareTo(new BigDecimal("50.00")) >= 0) {

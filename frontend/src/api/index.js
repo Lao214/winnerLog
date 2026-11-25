@@ -75,7 +75,9 @@ export const api = {
   updateHandicapMatchRecord: (id, data) => client.put(`/handicap-match-record/${id}`, data),
   deleteHandicapMatchRecord: (id) => client.delete(`/handicap-match-record/${id}`),
   batchDeleteHandicapMatchRecords: (ids) => client.post('/handicap-match-record/batch-delete', ids),
+  getHandicapMatchLeagues: () => client.get('/handicap-match-record/leagues'),
   simulateHandicapMatch: (data) => client.post('/handicap-match-record/simulate', data),
+
 
   // 12. 0球与7球两极进球赔率大数据分析接口
   getExtremeGoalsOddsList: (params) => client.get('/extreme-goals-odds/list', { params }),

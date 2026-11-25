@@ -105,6 +105,13 @@ public class HandicapMatchRecordController {
         return ApiResponse.success("批量删除成功", null);
     }
 
+    @Operation(summary = "获取已录入的所有不重复联赛名称列表")
+    @GetMapping("/leagues")
+    public ApiResponse<List<String>> leagues() {
+        return ApiResponse.success(service.getDistinctLeagueNames());
+    }
+
+
     @Operation(summary = "单场比赛胜平负概率与期望ROI智能测算", description = "输入赛制类型、让球方、胜平负赔率及步幅容差，从库内检索相似历史样本并计算打出概率、ROI及穿盘策略")
     @PostMapping("/simulate")
     public ApiResponse<com.example.winnerLogBackend.dto.response.HandicapMatchSimulationVO> simulate(

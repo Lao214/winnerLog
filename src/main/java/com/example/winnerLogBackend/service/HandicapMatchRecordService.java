@@ -27,5 +27,8 @@ public interface HandicapMatchRecordService {
 
     void batchDeleteMatches(List<Long> ids);
 
+    List<String> getDistinctLeagueNames();
+
     com.example.winnerLogBackend.dto.response.HandicapMatchSimulationVO simulateMatch(com.example.winnerLogBackend.dto.request.HandicapMatchSimulateRequest request);
 }
+
